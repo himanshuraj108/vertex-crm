@@ -8,7 +8,7 @@ The system is designed as a decoupled, multi-service architecture comprising:
 1. **Next.js Frontend**: An enterprise-style dashboard interface featuring a visual segment builder, live campaign statistics panels, and an interactive AI Assistant interface.
 2. **Express Backend API**: A Clean Architecture-based REST API (Route -> Controller -> Service -> Repository) that manages state, builds dynamic queries for segments, and handles delivery callbacks.
 3. **Channel Service**: A separate microservice simulating message brokers (e.g., WhatsApp, SMS, RCS, Email) with probabilistic delivery outcomes and an exponential backoff callback retry queue.
-4. **Supabase PostgreSQL**: Relational database storage for customers, orders, segments, campaigns, communications, and user profile/notification settings.
+4. **Supabase PostgreSQL**: Relational database storage for customers, orders, segments, campaigns, and communications.
 
 ```mermaid
 graph TD
@@ -45,10 +45,6 @@ graph TD
 - Full-screen conversational workspace utilizing tool-calling capabilities.
 - Access to seven distinct database and campaign operations (querying, creating, launching, checking stats).
 - Visual action cards indicating which queries were run and formatting the tabular outputs for clean rendering.
-
-### User Profiles & Notifications
-- Database-backed user profile page allowing customization of name, email, phone, role, and company configuration.
-- Real-time system notifications triggered automatically during campaign launches, campaign completions, and error situations.
 
 ### User Interface & Aesthetics
 - **Sleek Theme Toggle**: Interactive Light and Dark mode toggling integrated into the Topbar across all application views.
@@ -136,14 +132,6 @@ Access the application at `http://localhost:3000`.
 - `POST /api/v1/ai/parse-segment` - Translates plain English instructions to segment rules.
 - `POST /api/v1/ai/draft-message` - Generates channel-tailored templates.
 - `POST /api/v1/ai/analyze-campaign` - Returns plain English performance takeaways.
-
-### Profiles & Notifications
-- `GET /api/v1/profile` - Fetches the current user's profile.
-- `PATCH /api/v1/profile` - Modifies profile configuration.
-- `GET /api/v1/notifications` - Fetches notifications.
-- `PATCH /api/v1/notifications/:id/read` - Marks a single notification as read.
-- `POST /api/v1/notifications/read-all` - Marks all notifications as read.
-- `DELETE /api/v1/notifications/:id` - Removes a notification.
 
 ## Engineering Standards
 
