@@ -45,7 +45,16 @@ export const getCustomers = asyncHandler(async (req: Request, res: Response) => 
 
   const result = await customerRepo.findAll(page, limit, search, city, gender);
 
-  res.json({ success: true, data: result });
+  res.json({
+    success: true,
+    data: {
+      data: result.data,
+      total: result.total,
+      page,
+      limit,
+      totalPages: Math.ceil(result.total / limit),
+    },
+  });
 });
 
 export const getCustomer = asyncHandler(async (req: Request, res: Response) => {
@@ -70,7 +79,16 @@ export const getCustomerOrders = asyncHandler(async (req: Request, res: Response
   }
 
   const result = await customerRepo.findOrders(id, page, limit);
-  res.json({ success: true, data: result });
+  res.json({
+    success: true,
+    data: {
+      data: result.data,
+      total: result.total,
+      page,
+      limit,
+      totalPages: Math.ceil(result.total / limit),
+    },
+  });
 });
 
 export const getCustomerCampaigns = asyncHandler(async (req: Request, res: Response) => {

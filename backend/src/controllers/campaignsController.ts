@@ -10,9 +10,11 @@ import { asyncHandler } from '../utils/asyncHandler';
 
 const CreateCampaignSchema = z.object({
   name: z.string().min(1).max(200),
-  segment_id: z.string().uuid().nullable().optional(),
+  segment_id: z.string().uuid().nullable().optional().or(z.literal('')),
+  segmentId: z.string().uuid().nullable().optional().or(z.literal('')),
   channel: z.enum(['whatsapp', 'sms', 'email', 'rcs']),
-  message_template: z.string().min(1).max(4000),
+  message_template: z.string().min(1).max(4000).optional(),
+  messageTemplate: z.string().min(1).max(4000).optional(),
 });
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
@@ -31,11 +33,22 @@ export const getCampaign = asyncHandler(async (req: Request, res: Response) => {
 
 export const createCampaign = asyncHandler(async (req: Request, res: Response) => {
   const data = CreateCampaignSchema.parse(req.body);
+  
+  let segmentId = data.segment_id ?? data.segmentId ?? undefined;
+  if (segmentId === '') {
+    segmentId = undefined;
+  }
+  
+  const messageTemplate = data.message_template ?? data.messageTemplate;
+  if (!messageTemplate) {
+    throw ApiError.badRequest('message_template or messageTemplate is required');
+  }
+
   const campaign = await campaignRepo.create({
     name: data.name,
-    segment_id: data.segment_id ?? undefined,
+    segment_id: segmentId ?? undefined,
     channel: data.channel,
-    message_template: data.message_template,
+    message_template: messageTemplate,
   });
   res.status(201).json({ success: true, data: campaign });
 });
@@ -79,7 +92,16 @@ export const getCampaignCommunications = asyncHandler(async (req: Request, res: 
   if (!campaign) throw ApiError.notFound(`Campaign ${id} not found`);
 
   const result = await campaignRepo.findCommunications(id, page, limit);
-  res.json({ success: true, data: result });
+  res.json({
+    success: true,
+    data: {
+      data: result.data,
+      total: result.total,
+      page,
+      limit,
+      totalPages: Math.ceil(result.total / limit),
+    },
+  });
 });
 
 /**
