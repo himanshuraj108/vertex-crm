@@ -50,6 +50,9 @@ export function createApp(): Application {
       timestamp: new Date().toISOString(),
       service: 'vertex-crm-backend',
       version: process.env.npm_package_version ?? '1.0.0',
+      commit: '532bdc4-v2',
+      groqKeyPresent: !!process.env.GROQ_API_KEY,
+      groqKeyLength: process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.length : 0,
     });
   });
 
