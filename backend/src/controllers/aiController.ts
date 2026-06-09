@@ -181,7 +181,7 @@ async function executeToolCall(
     case 'get_analytics_summary': {
       const [custRes, campRes, ordRes, statsRes] = await Promise.all([
         supabase.from('customers').select('*', { count: 'exact', head: true }),
-        supabase.from('campaigns').select('*', { count: 'exact', head: true }),
+        supabase.from('campaigns').select('status'),
         supabase.from('orders').select('amount'),
         supabase.from('campaign_stats').select('total,delivered'),
       ]);
@@ -191,11 +191,36 @@ async function executeToolCall(
       const allStats = statsRes.data ?? [];
       const totSent = allStats.reduce((s: number, r: Record<string, number>) => s + (r.total || 0), 0);
       const totDel = allStats.reduce((s: number, r: Record<string, number>) => s + (r.delivered || 0), 0);
+
+      const campaigns = campRes.data ?? [];
+      const totalCampaigns = campaigns.length;
+      const campaignsByStatus = campaigns.reduce((acc: Record<string, number>, c: { status: string }) => {
+        acc[c.status] = (acc[c.status] || 0) + 1;
+        return acc;
+      }, { draft: 0, running: 0, completed: 0, failed: 0 });
+
       return {
         total_customers: custRes.count ?? 0,
-        total_campaigns: campRes.count ?? 0,
+        total_campaigns: totalCampaigns,
+        campaigns_by_status: campaignsByStatus,
         total_revenue_inr: totalRevenue,
         avg_delivery_rate_pct: totSent > 0 ? Math.round((totDel / totSent) * 1000) / 10 : 0,
+      };
+    }
+
+    case 'list_campaigns': {
+      const { status } = args as { status?: string };
+      const campaigns = await campaignRepo.findAll(status);
+      return {
+        count: campaigns.length,
+        campaigns: campaigns.map((c) => ({
+          id: c.id,
+          name: c.name,
+          status: c.status,
+          channel: c.channel,
+          segment_name: c.segment_name,
+          created_at: c.created_at,
+        })),
       };
     }
 

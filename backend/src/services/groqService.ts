@@ -7,6 +7,10 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
+const groqFallback = new Groq({
+  apiKey: process.env.FALLBACK_GROQ_API_KEY || '',
+});
+
 const MODEL = 'llama-3.3-70b-versatile';
 
 const SEGMENT_RULES_SCHEMA = {
@@ -43,7 +47,7 @@ const SEGMENT_RULES_SCHEMA = {
 
 type ChatCompletionCreateParams = Parameters<typeof groq.chat.completions.create>[0];
 
-// Helper to perform chat completion with fallback to llama-3.1-8b-instant on 429 rate limit
+// Helper to perform chat completion with fallback to fallback client and llama-3.1-8b-instant
 async function createChatCompletion(
   params: Omit<ChatCompletionCreateParams, 'model'> & { model?: string }
 ): Promise<any> {
@@ -54,14 +58,22 @@ async function createChatCompletion(
       model: primaryModel,
     } as ChatCompletionCreateParams);
   } catch (err: any) {
-    if (err.status === 429 && primaryModel === 'llama-3.3-70b-versatile') {
-      logger.warn('Groq 429 Rate Limit. Falling back to llama-3.1-8b-instant...');
-      return await groq.chat.completions.create({
+    logger.warn(`Primary Groq client failed: ${err.message || err}. Retrying with fallback API key...`);
+    try {
+      return await groqFallback.chat.completions.create({
         ...params,
-        model: 'llama-3.1-8b-instant',
+        model: primaryModel,
       } as ChatCompletionCreateParams);
+    } catch (fallbackErr: any) {
+      if (fallbackErr.status === 429 && primaryModel === 'llama-3.3-70b-versatile') {
+        logger.warn('Fallback Groq also rate limited. Falling back to llama-3.1-8b-instant on fallback client...');
+        return await groqFallback.chat.completions.create({
+          ...params,
+          model: 'llama-3.1-8b-instant',
+        } as ChatCompletionCreateParams);
+      }
+      throw fallbackErr;
     }
-    throw err;
   }
 }
 
@@ -168,10 +180,27 @@ const AI_TOOLS: CompletionCreateParams.Tool[] = [
     type: 'function',
     function: {
       name: 'get_analytics_summary',
-      description: 'Get overall CRM analytics including total customers, campaigns, and revenue',
+      description: 'Get overall CRM analytics including total customers, campaigns count, campaign status breakdown (draft, running, completed, failed), and revenue',
       parameters: {
         type: 'object',
         properties: {},
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_campaigns',
+      description: 'List campaigns with their name, status, channel, segment name, and ID (optionally filtered by status)',
+      parameters: {
+        type: 'object',
+        properties: {
+          status: {
+            type: 'string',
+            enum: ['draft', 'running', 'completed', 'failed'],
+            description: 'Filter campaigns by status (draft, running, completed, failed)'
+          },
+        },
       },
     },
   },
