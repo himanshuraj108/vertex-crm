@@ -49,17 +49,23 @@ export const campaignService = {
     await campaignRepo.initStats(campaignId, customers.length);
     await campaignRepo.updateStatus(campaignId, 'running');
 
-    const channelServiceUrl = process.env.CHANNEL_SERVICE_URL ?? 'http://localhost:3002';
+    const channelServiceUrl = process.env.CHANNEL_SERVICE_URL ?? 'http://localhost:3003';
 
     // Send each message via channel service (fire-and-forget per message)
     const sendPromises = comms.map(async (comm) => {
+      const customer = customers.find((c) => c.id === comm.customer_id);
       try {
         await axios.post(`${channelServiceUrl}/send`, {
           communicationId: comm.id,
           channel: campaign.channel,
-          to: customers.find((c) => c.id === comm.customer_id)?.phone ?? '',
+          recipient: {
+            id: customer?.id ?? '',
+            name: customer?.name ?? '',
+            email: customer?.email ?? '',
+            phone: customer?.phone ?? null,
+          },
           message: comm.message,
-          callbackUrl: `${process.env.BACKEND_URL ?? 'http://localhost:3001'}/api/v1/receipt`,
+          callbackUrl: `${process.env.BACKEND_URL ?? 'http://localhost:3001'}/api/v1/receipts`,
         });
       } catch (err) {
         logger.warn(`Failed to send message ${comm.id}: ${(err as Error).message}`);

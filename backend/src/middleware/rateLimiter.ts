@@ -9,6 +9,7 @@ export const rateLimiter = rateLimit({
   max: 100,
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false,   // Disable the `X-RateLimit-*` headers
+  skip: (req) => req.path.startsWith('/api/v1/receipts') || req.path === '/health',
   message: {
     success: false,
     error: {
