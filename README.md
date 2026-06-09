@@ -48,8 +48,12 @@ graph TD
 
 ### User Profiles & Notifications
 - Database-backed user profile page allowing customization of name, email, phone, role, and company configuration.
-- Topbar bell icon with an unread notification count badge and interactive list.
 - Real-time system notifications triggered automatically during campaign launches, campaign completions, and error situations.
+
+### User Interface & Aesthetics
+- **Sleek Theme Toggle**: Interactive Light and Dark mode toggling integrated into the Topbar across all application views.
+- **Visual Previews & Analytics**: Demographics graphs (pie charts, bar charts, spend distribution) in segments detail views. Live Phone Preview visualizing compiled messaging templates for WhatsApp/SMS/Email/RCS.
+- **Page-wide Refresh Buttons**: Dedicated refresh buttons on all core pages (Dashboard, Customers, Segments List, Segments Detail, Segment Builder, Campaigns List, Campaign Details, Campaign Wizard) with spinning state pending animation to fetch live updates.
 
 ## Quick Start
 
@@ -71,6 +75,7 @@ DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres
 SUPABASE_URL=https://[PROJECT-ID].supabase.co
 SUPABASE_ANON_KEY=your_supabase_anon_key
 GROQ_API_KEY=your_groq_api_key
+FALLBACK_GROQ_API_KEY=your_fallback_groq_api_key  # Optional fallback key
 CHANNEL_SERVICE_URL=http://localhost:3002
 FRONTEND_URL=http://localhost:3000
 ```
@@ -127,7 +132,7 @@ Access the application at `http://localhost:3000`.
 - `GET /api/v1/campaigns/:id/stream` - SSE stream delivering live campaign performance metrics.
 
 ### AI Endpoints
-- `POST /api/v1/ai/chat` - AI Agent endpoint with database tools.
+- `POST /api/v1/ai/chat` - AI Agent endpoint supporting tool calling (`query_customers`, `create_segment`, `preview_segment`, `create_campaign`, `launch_campaign`, `get_campaign_stats`, `list_campaigns`, `get_analytics_summary`).
 - `POST /api/v1/ai/parse-segment` - Translates plain English instructions to segment rules.
 - `POST /api/v1/ai/draft-message` - Generates channel-tailored templates.
 - `POST /api/v1/ai/analyze-campaign` - Returns plain English performance takeaways.
