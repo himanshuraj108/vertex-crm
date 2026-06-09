@@ -1,0 +1,112 @@
+import { Request, Response } from 'express';
+import { z } from 'zod';
+import { campaignRepo } from '../repositories/campaignRepo';
+import { campaignService } from '../services/campaignService';
+import { sseService } from '../services/sseService';
+import { ApiError } from '../utils/ApiError';
+import { asyncHandler } from '../utils/asyncHandler';
+
+// ─── Validation Schemas ───────────────────────────────────────────────────────
+
+const CreateCampaignSchema = z.object({
+  name: z.string().min(1).max(200),
+  segment_id: z.string().uuid().nullable().optional(),
+  channel: z.enum(['whatsapp', 'sms', 'email', 'rcs']),
+  message_template: z.string().min(1).max(4000),
+});
+
+// ─── Controllers ──────────────────────────────────────────────────────────────
+
+export const getCampaigns = asyncHandler(async (req: Request, res: Response) => {
+  const status = (req.query.status as string) || undefined;
+  const campaigns = await campaignRepo.findAll(status);
+  res.json({ success: true, data: campaigns });
+});
+
+export const getCampaign = asyncHandler(async (req: Request, res: Response) => {
+  const campaign = await campaignRepo.findById(req.params.id);
+  if (!campaign) throw ApiError.notFound(`Campaign ${req.params.id} not found`);
+  res.json({ success: true, data: campaign });
+});
+
+export const createCampaign = asyncHandler(async (req: Request, res: Response) => {
+  const data = CreateCampaignSchema.parse(req.body);
+  const campaign = await campaignRepo.create({
+    name: data.name,
+    segment_id: data.segment_id ?? undefined,
+    channel: data.channel,
+    message_template: data.message_template,
+  });
+  res.status(201).json({ success: true, data: campaign });
+});
+
+export const launchCampaign = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const campaign = await campaignRepo.findById(id);
+  if (!campaign) throw ApiError.notFound(`Campaign ${id} not found`);
+
+  // Launch asynchronously — respond immediately so client can connect SSE
+  res.json({
+    success: true,
+    message: 'Campaign launch initiated',
+    data: { campaign_id: id },
+  });
+
+  // Fire-and-forget launch (errors logged internally)
+  campaignService.launch(id).catch((err: Error) => {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`Campaign ${id} launch failed:`, message);
+  });
+});
+
+export const getCampaignStats = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const campaign = await campaignRepo.findById(id);
+  if (!campaign) throw ApiError.notFound(`Campaign ${id} not found`);
+
+  const stats = await campaignRepo.findStats(id);
+  res.json({ success: true, data: stats ?? { campaign_id: id, total: 0, sent: 0, delivered: 0, failed: 0, opened: 0, read_count: 0, clicked: 0, orders_attributed: 0 } });
+});
+
+export const getCampaignCommunications = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+
+  const campaign = await campaignRepo.findById(id);
+  if (!campaign) throw ApiError.notFound(`Campaign ${id} not found`);
+
+  const result = await campaignRepo.findCommunications(id, page, limit);
+  res.json({ success: true, data: result });
+});
+
+/**
+ * SSE endpoint — streams real-time campaign stats updates.
+ * Clients connect and receive updates whenever a delivery receipt comes in.
+ */
+export const streamCampaignStats = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const campaign = await campaignRepo.findById(id);
+  if (!campaign) throw ApiError.notFound(`Campaign ${id} not found`);
+
+  // Register the SSE client
+  sseService.addClient(id, res);
+
+  // Send current stats immediately on connect
+  const stats = await campaignRepo.findStats(id);
+  if (stats) {
+    res.write(`event: stats_update\ndata: ${JSON.stringify(stats)}\n\n`);
+  }
+
+  // Clean up on client disconnect
+  req.on('close', () => {
+    sseService.removeClient(id, res);
+  });
+
+  req.on('aborted', () => {
+    sseService.removeClient(id, res);
+  });
+});
