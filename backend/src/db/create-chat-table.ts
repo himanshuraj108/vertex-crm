@@ -1,7 +1,8 @@
 import { Client } from 'pg';
+import 'dotenv/config';
 
 async function main() {
-  const directUrl = 'postgresql://postgres:rahul%40663456%40@db.uyiktoxzhqlvfrqhudws.supabase.co:5432/postgres';
+  const directUrl = process.env.DATABASE_URL!;
   console.log('Connecting directly to Supabase DB...');
   const client = new Client({
     connectionString: directUrl,
