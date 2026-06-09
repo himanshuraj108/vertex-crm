@@ -80,24 +80,24 @@ async function executeToolCall(
 
       const conditions: SegmentRules['conditions'] = [];
 
-      if (city) conditions.push({ field: 'city', operator: 'eq', value: city });
-      if (gender)
+      if (city && city.trim() !== '') conditions.push({ field: 'city', operator: 'eq', value: city });
+      if (gender && gender.trim() !== '')
         conditions.push({
           field: 'gender',
           operator: 'eq',
           value: gender,
         });
-      if (min_spend !== undefined)
+      if (min_spend !== undefined && min_spend > 0)
         conditions.push({ field: 'total_spend', operator: 'gte', value: min_spend });
-      if (max_spend !== undefined)
+      if (max_spend !== undefined && max_spend > 0)
         conditions.push({ field: 'total_spend', operator: 'lte', value: max_spend });
-      if (days_since_last_order_gt !== undefined)
+      if (days_since_last_order_gt !== undefined && days_since_last_order_gt > 0)
         conditions.push({
           field: 'days_since_last_order',
           operator: 'gt',
           value: days_since_last_order_gt,
         });
-      if (order_count_gte !== undefined)
+      if (order_count_gte !== undefined && order_count_gte > 0)
         conditions.push({ field: 'order_count', operator: 'gte', value: order_count_gte });
 
       const rules: SegmentRules =

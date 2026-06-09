@@ -9,6 +9,62 @@ const groq = new Groq({
 
 const MODEL = 'llama-3.3-70b-versatile';
 
+const SEGMENT_RULES_SCHEMA = {
+  type: 'object',
+  description: 'SegmentRules object specifying filtering conditions and logic',
+  required: ['logic', 'conditions'],
+  properties: {
+    logic: { type: 'string', enum: ['AND', 'OR'], description: 'Logic to combine conditions' },
+    conditions: {
+      type: 'array',
+      description: 'List of filters to apply to the customer base',
+      items: {
+        type: 'object',
+        required: ['field', 'operator', 'value'],
+        properties: {
+          field: {
+            type: 'string',
+            enum: ['total_spend', 'order_count', 'city', 'gender', 'days_since_last_order', 'visit_count'],
+            description: 'The customer field to filter on'
+          },
+          operator: {
+            type: 'string',
+            enum: ['gt', 'lt', 'gte', 'lte', 'eq', 'neq', 'in'],
+            description: 'Comparison operator'
+          },
+          value: {
+            description: 'Comparison value (e.g., number for total_spend, string for city, array of strings for IN operator)'
+          }
+        }
+      }
+    }
+  }
+};
+
+type ChatCompletionCreateParams = Parameters<typeof groq.chat.completions.create>[0];
+
+// Helper to perform chat completion with fallback to llama-3.1-8b-instant on 429 rate limit
+async function createChatCompletion(
+  params: Omit<ChatCompletionCreateParams, 'model'> & { model?: string }
+): Promise<any> {
+  const primaryModel = params.model || MODEL;
+  try {
+    return await groq.chat.completions.create({
+      ...params,
+      model: primaryModel,
+    } as ChatCompletionCreateParams);
+  } catch (err: any) {
+    if (err.status === 429 && primaryModel === 'llama-3.3-70b-versatile') {
+      logger.warn('Groq 429 Rate Limit. Falling back to llama-3.1-8b-instant...');
+      return await groq.chat.completions.create({
+        ...params,
+        model: 'llama-3.1-8b-instant',
+      } as ChatCompletionCreateParams);
+    }
+    throw err;
+  }
+}
+
 // ─── AI Tool definitions ──────────────────────────────────────────────────────
 
 const AI_TOOLS: CompletionCreateParams.Tool[] = [
@@ -21,7 +77,7 @@ const AI_TOOLS: CompletionCreateParams.Tool[] = [
         type: 'object',
         properties: {
           city: { type: 'string', description: 'Filter by city name' },
-          gender: { type: 'string', enum: ['male', 'female', 'other'] },
+          gender: { type: 'string', enum: ['male', 'female', 'other', ''] },
           min_spend: { type: 'number', description: 'Minimum total spend in INR' },
           max_spend: { type: 'number', description: 'Maximum total spend in INR' },
           days_since_last_order_gt: { type: 'number', description: 'Customers inactive for more than N days' },
@@ -41,7 +97,7 @@ const AI_TOOLS: CompletionCreateParams.Tool[] = [
         properties: {
           name: { type: 'string', description: 'Segment name' },
           description: { type: 'string', description: 'What this segment represents' },
-          rules: { type: 'object', description: 'SegmentRules object with logic and conditions' },
+          rules: SEGMENT_RULES_SCHEMA,
         },
       },
     },
@@ -55,7 +111,7 @@ const AI_TOOLS: CompletionCreateParams.Tool[] = [
         type: 'object',
         required: ['rules'],
         properties: {
-          rules: { type: 'object', description: 'SegmentRules object' },
+          rules: SEGMENT_RULES_SCHEMA,
         },
       },
     },
@@ -159,6 +215,7 @@ Available operators: gt, lt, gte, lte, eq, neq, in
 3. Suggest compelling, brand-appropriate messages for a premium coffee chain
 4. When analyzing, provide specific, actionable recommendations
 5. Keep messages under 160 chars for SMS, more flexibility for WhatsApp/email
+6. When calling tools (like query_customers), only specify parameters that are relevant to the user's request. Do not pass default values (like 0, null, or empty strings) for unused filters, as this will filter the data incorrectly.
 
 Current date: ${new Date().toISOString().split('T')[0]}`;
 }
@@ -218,7 +275,7 @@ export async function chatWithAgent(
   let maxIterations = 10;
 
   while (maxIterations-- > 0) {
-    const response = await groq.chat.completions.create({
+    const response = await createChatCompletion({
       model: MODEL,
       messages: conversationMessages,
       tools: AI_TOOLS,
@@ -312,7 +369,7 @@ Available cities: Mumbai, Delhi, Bangalore, Chennai, Pune, Hyderabad
 
 Return ONLY valid JSON, no explanation, no markdown fences.`;
 
-  const response = await groq.chat.completions.create({
+  const response = await createChatCompletion({
     model: MODEL,
     messages: [{ role: 'user', content: prompt }],
     max_tokens: 512,
@@ -355,7 +412,7 @@ Use template variables where appropriate: {{name}}, {{city}}, {{last_order}}, {{
 
 Write ONLY the message template text. No explanations, no labels, just the message.`;
 
-  const response = await groq.chat.completions.create({
+  const response = await createChatCompletion({
     model: MODEL,
     messages: [{ role: 'user', content: prompt }],
     max_tokens: 300,
@@ -395,7 +452,7 @@ Provide:
 
 Be specific to the coffee chain context. Keep total response under 200 words.`;
 
-  const response = await groq.chat.completions.create({
+  const response = await createChatCompletion({
     model: MODEL,
     messages: [{ role: 'user', content: prompt }],
     max_tokens: 400,
@@ -440,7 +497,7 @@ Available operators: gt, lt, gte, lte, eq, neq, in
 
 Return ONLY the JSON. No markdown. No explanation.`;
 
-  const response = await groq.chat.completions.create({
+  const response = await createChatCompletion({
     model: MODEL,
     messages: [{ role: 'user', content: prompt }],
     max_tokens: 900,
@@ -473,7 +530,7 @@ Request: "${firstMessage}"
 Return ONLY the plain title text, no quotes, no formatting.`;
 
   try {
-    const response = await groq.chat.completions.create({
+    const response = await createChatCompletion({
       model: MODEL,
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 30,
