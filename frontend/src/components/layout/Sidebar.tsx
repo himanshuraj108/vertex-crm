@@ -24,12 +24,12 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-[240px] flex-col border-r border-zinc-200 bg-white">
+    <aside className="fixed inset-y-0 left-0 z-30 flex w-[240px] flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
       {/* Logo */}
-      <div className="flex h-14 items-center border-b border-zinc-200 px-5">
-        <span className="text-lg font-bold tracking-tight text-zinc-900">
+      <div className="flex h-14 items-center border-b border-zinc-200 dark:border-zinc-800 px-5">
+        <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           Vertex
-          <span className="ml-1 text-blue-600">.</span>
+          <span className="inline-block ml-0.5 h-[5px] w-[5px] rounded-full bg-blue-600 dark:bg-blue-400 blink-glow align-baseline mb-[2px]" />
         </span>
       </div>
 
@@ -47,13 +47,13 @@ export function Sidebar() {
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'
+                  ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-50'
               )}
             >
               <Icon
                 size={16}
-                className={cn(isActive ? 'text-blue-600' : 'text-zinc-400')}
+                className={cn(isActive ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-400 dark:text-zinc-500')}
               />
               {label}
             </Link>
@@ -62,14 +62,14 @@ export function Sidebar() {
       </nav>
 
       {/* Brand footer */}
-      <div className="border-t border-zinc-200 px-5 py-4">
+      <div className="border-t border-zinc-200 dark:border-zinc-800 px-5 py-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-amber-50">
-            <Coffee size={14} className="text-amber-600" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-amber-50 dark:bg-amber-950/20">
+            <Coffee size={14} className="text-amber-600 dark:text-amber-500" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-zinc-900">BrewCo</p>
-            <p className="text-[11px] text-zinc-400">Premium Coffee Chain</p>
+            <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-50">BrewCo</p>
+            <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Premium Coffee Chain</p>
           </div>
         </div>
       </div>

@@ -18,6 +18,20 @@
   --danger: #DC2626;
 }
 
+.dark {
+  --background: #09090B;
+  --surface: #18181B;
+  --border: #27272A;
+  --text-primary: #F4F4F5;
+  --text-muted: #A1A1AA;
+  --accent: #3B82F6;
+  --accent-hover: #60A5FA;
+  --accent-light: #1E293B;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+}
+
 @layer base {
   * {
     box-sizing: border-box;
@@ -76,6 +90,25 @@
 .pulse-dot:nth-child(2) { animation-delay: 0.2s; }
 .pulse-dot:nth-child(3) { animation-delay: 0.4s; }
 
+@keyframes blink-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 6px var(--accent));
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(0.9);
+    filter: drop-shadow(0 0 0px transparent);
+  }
+}
+
+.blink-glow {
+  display: inline-block;
+  transform-origin: center center;
+  animation: blink-glow 2.2s infinite ease-in-out;
+}
+
 /* ─── Table ──────────────────────────────────────────────────────────────── */
 .data-table {
   border-collapse: collapse;
@@ -91,7 +124,7 @@
   padding: 10px 16px;
   text-align: left;
   border-bottom: 1px solid var(--border);
-  background: #FAFAFA;
+  background: var(--background);
   white-space: nowrap;
 }
 
@@ -102,7 +135,7 @@
 }
 
 .data-table tbody tr:hover {
-  background: #F4F4F5;
+  background: var(--background);
   cursor: pointer;
 }
 

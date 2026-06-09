@@ -36,44 +36,44 @@ function ToolCallCard({ toolCall }: { toolCall: AIToolCall }) {
       case 'query_customers':
         return (
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-zinc-700">Found {res.count} customers</p>
-            <div className="border border-zinc-200 rounded-md overflow-hidden bg-zinc-50 shadow-sm">
+            <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-350">Found {res.count} customers</p>
+            <div className="border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden bg-zinc-50 dark:bg-zinc-950 shadow-sm">
               <table className="w-full text-left border-collapse text-[10px]">
                 <thead>
-                  <tr className="bg-zinc-100 border-b border-zinc-200 text-zinc-600 font-medium">
+                  <tr className="bg-zinc-100 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-655 dark:text-zinc-400 font-medium">
                     <th className="p-1.5 px-3">Name</th>
                     <th className="p-1.5 px-3">City</th>
                     <th className="p-1.5 px-3 text-right">Spend</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-200">
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                   {(res.customers || []).map((c: any) => (
-                    <tr key={c.id} className="hover:bg-zinc-100/50 bg-white text-zinc-700">
-                      <td className="p-1.5 px-3 font-medium text-zinc-900">{c.name}</td>
+                    <tr key={c.id} className="hover:bg-zinc-100/50 dark:hover:bg-zinc-800/40 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300">
+                      <td className="p-1.5 px-3 font-medium text-zinc-900 dark:text-zinc-100">{c.name}</td>
                       <td className="p-1.5 px-3">{c.city || '—'}</td>
-                      <td className="p-1.5 px-3 text-right font-medium text-zinc-900">₹{c.total_spend?.toLocaleString() || 0}</td>
+                      <td className="p-1.5 px-3 text-right font-medium text-zinc-900 dark:text-zinc-100">₹{c.total_spend?.toLocaleString() || 0}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            {res.note && <p className="text-[10px] text-zinc-400 italic">{res.note}</p>}
+            {res.note && <p className="text-[10px] text-zinc-400 dark:text-zinc-500 italic">{res.note}</p>}
           </div>
         );
 
       case 'create_segment':
         return (
           <div className="space-y-1">
-            <p className="text-xs text-zinc-600">
-              Segment created: <span className="font-semibold text-zinc-900">{res.name}</span>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              Segment created: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{res.name}</span>
             </p>
-            <p className="text-xs text-zinc-600">
-              Audience size: <span className="font-semibold text-zinc-900">{res.audience_size} customers</span>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              Audience size: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{res.audience_size} customers</span>
             </p>
             {res.segment_id && (
               <Link
                 href={`/segments/${res.segment_id}`}
-                className="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline mt-1"
+                className="inline-flex items-center text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline mt-1"
               >
                 View Segment details →
               </Link>
@@ -84,15 +84,15 @@ function ToolCallCard({ toolCall }: { toolCall: AIToolCall }) {
       case 'preview_segment':
         return (
           <div className="space-y-2">
-            <p className="text-xs text-zinc-600">
-              Audience match size: <span className="font-semibold text-zinc-900">{res.count} customers</span>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              Audience match size: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{res.count} customers</span>
             </p>
             {res.sample && res.sample.length > 0 && (
-              <div className="border border-zinc-200 rounded-md bg-zinc-50 p-2 space-y-1.5 text-[10px] shadow-inner">
-                <p className="font-semibold text-zinc-500 border-b pb-1">Sample Customers:</p>
+              <div className="border border-zinc-200 dark:border-zinc-800 rounded-md bg-zinc-50 dark:bg-zinc-950 p-2 space-y-1.5 text-[10px] shadow-inner">
+                <p className="font-semibold text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 pb-1">Sample Customers:</p>
                 {res.sample.map((s: any, idx: number) => (
-                  <div key={idx} className="flex justify-between text-zinc-700">
-                    <span className="font-medium text-zinc-800">{s.name}</span>
+                  <div key={idx} className="flex justify-between text-zinc-700 dark:text-zinc-300">
+                    <span className="font-medium text-zinc-800 dark:text-zinc-200">{s.name}</span>
                     <span>{s.city} (₹{s.total_spend?.toLocaleString()})</span>
                   </div>
                 ))}
@@ -104,16 +104,16 @@ function ToolCallCard({ toolCall }: { toolCall: AIToolCall }) {
       case 'create_campaign':
         return (
           <div className="space-y-1">
-            <p className="text-xs text-zinc-600">
-              Campaign created: <span className="font-semibold text-zinc-900">{res.name}</span>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              Campaign created: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{res.name}</span>
             </p>
-            <p className="text-xs text-zinc-600">
-              Status: <span className="capitalize font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded text-[10px]">{res.status}</span>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              Status: <span className="capitalize font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border border-transparent dark:border-blue-900/20 px-1.5 py-0.5 rounded text-[10px]">{res.status}</span>
             </p>
             {res.campaign_id && (
               <Link
                 href={`/campaigns/${res.campaign_id}`}
-                className="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline mt-1"
+                className="inline-flex items-center text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline mt-1"
               >
                 View Campaign tracker →
               </Link>
@@ -124,36 +124,36 @@ function ToolCallCard({ toolCall }: { toolCall: AIToolCall }) {
       case 'launch_campaign':
         return (
           <div className="space-y-1">
-            <p className="text-xs text-green-700 font-semibold">{res.message || 'Campaign launched!'}</p>
-            <p className="text-xs text-zinc-600">Status: <span className="capitalize font-semibold text-green-600 bg-green-50 px-1.5 py-0.5 rounded text-[10px]">{res.status}</span></p>
+            <p className="text-xs text-green-700 dark:text-green-400 font-semibold">{res.message || 'Campaign launched!'}</p>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">Status: <span className="capitalize font-semibold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/40 border border-transparent dark:border-green-900/20 px-1.5 py-0.5 rounded text-[10px]">{res.status}</span></p>
           </div>
         );
 
       case 'get_campaign_stats':
         return (
-          <div className="grid grid-cols-2 gap-2 bg-zinc-50 border border-zinc-200 p-2.5 rounded-md text-zinc-700 text-[10px] shadow-sm">
-            <div>Total audience: <span className="font-semibold text-zinc-900">{res.total || 0}</span></div>
-            <div>Sent count: <span className="font-semibold text-zinc-900">{res.sent || 0}</span></div>
-            <div>Delivered: <span className="font-semibold text-zinc-900">{res.delivered || 0}</span></div>
-            <div>Opened: <span className="font-semibold text-zinc-900">{res.opened || 0}</span></div>
-            <div>Read count: <span className="font-semibold text-zinc-900">{res.read_count || 0}</span></div>
-            <div>Clicked: <span className="font-semibold text-zinc-900">{res.clicked || 0}</span></div>
+          <div className="grid grid-cols-2 gap-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-2.5 rounded-md text-zinc-700 dark:text-zinc-300 text-[10px] shadow-sm">
+            <div>Total audience: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{res.total || 0}</span></div>
+            <div>Sent count: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{res.sent || 0}</span></div>
+            <div>Delivered: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{res.delivered || 0}</span></div>
+            <div>Opened: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{res.opened || 0}</span></div>
+            <div>Read count: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{res.read_count || 0}</span></div>
+            <div>Clicked: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{res.clicked || 0}</span></div>
           </div>
         );
 
       case 'get_analytics_summary':
         return (
-          <div className="grid grid-cols-2 gap-2.5 bg-zinc-50 border border-zinc-200 p-2.5 rounded-md text-zinc-700 text-[10px] shadow-sm">
-            <div>Total Customers: <span className="font-semibold text-zinc-900">{res.total_customers?.toLocaleString()}</span></div>
-            <div>Total Campaigns: <span className="font-semibold text-zinc-900">{res.total_campaigns}</span></div>
-            <div>Total Revenue: <span className="font-semibold text-zinc-900">₹{res.total_revenue_inr?.toLocaleString()}</span></div>
-            <div>Avg Delivery Rate: <span className="font-semibold text-zinc-900">{res.avg_delivery_rate_pct}%</span></div>
+          <div className="grid grid-cols-2 gap-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-2.5 rounded-md text-zinc-700 dark:text-zinc-300 text-[10px] shadow-sm">
+            <div>Total Customers: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{res.total_customers?.toLocaleString()}</span></div>
+            <div>Total Campaigns: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{res.total_campaigns}</span></div>
+            <div>Total Revenue: <span className="font-semibold text-zinc-900 dark:text-zinc-100">₹{res.total_revenue_inr?.toLocaleString()}</span></div>
+            <div>Avg Delivery Rate: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{res.avg_delivery_rate_pct}%</span></div>
           </div>
         );
 
       default:
         return (
-          <pre className="overflow-x-auto text-[10px] text-zinc-600">
+          <pre className="overflow-x-auto text-[10px] text-zinc-600 dark:text-zinc-400">
             {JSON.stringify(res, null, 2)}
           </pre>
         );
@@ -161,21 +161,21 @@ function ToolCallCard({ toolCall }: { toolCall: AIToolCall }) {
   };
 
   return (
-    <div className="mt-2 rounded-md border border-zinc-200 border-l-2 border-l-green-500 bg-green-50/30 px-3 py-2 shadow-sm">
+    <div className="mt-2 rounded-md border border-zinc-200 dark:border-zinc-800 border-l-2 border-l-green-500 dark:border-l-green-500 bg-green-50/30 dark:bg-green-950/10 px-3 py-2 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles size={12} className="text-green-600 animate-pulse" />
-          <p className="text-[11px] font-semibold text-green-700 capitalize">{displayName}</p>
+          <Sparkles size={12} className="text-green-600 dark:text-green-400 animate-pulse" />
+          <p className="text-[11px] font-semibold text-green-700 dark:text-green-400 capitalize">{displayName}</p>
         </div>
         <button
           onClick={() => setExpanded((e) => !e)}
-          className="text-green-500 hover:text-green-700 transition-colors"
+          className="text-green-500 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors"
         >
           {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         </button>
       </div>
       {expanded && (
-        <div className="mt-2 rounded-md bg-white p-2.5 text-zinc-600 border border-zinc-200 shadow-sm transition-all duration-200">
+        <div className="mt-2 rounded-md bg-white dark:bg-zinc-900 p-2.5 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-200">
           {renderResult()}
         </div>
       )}
@@ -193,16 +193,16 @@ function MessageBubble({ msg }: { msg: AIMessage }) {
     >
       <div className={cn(
         'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
-        isUser ? 'bg-blue-600' : 'border border-zinc-200 bg-white'
+        isUser ? 'bg-blue-600' : 'border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900'
       )}>
-        {isUser ? <User size={13} className="text-white" /> : <Bot size={13} className="text-zinc-500" />}
+        {isUser ? <User size={13} className="text-white" /> : <Bot size={13} className="text-zinc-550 dark:text-zinc-400" />}
       </div>
       <div className={cn('max-w-[80%] space-y-1', isUser ? 'items-end' : 'items-start')}>
         <div className={cn(
           'rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap',
           isUser
             ? 'rounded-tr-sm bg-blue-600 text-white'
-            : 'rounded-tl-sm border border-zinc-200 bg-white text-zinc-800'
+            : 'rounded-tl-sm border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200'
         )}>
           {msg.content}
         </div>
@@ -384,24 +384,24 @@ export default function AIPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-88px)] gap-5">
+    <div className="flex h-[calc(100vh-88px)] gap-5 text-zinc-900 dark:text-zinc-100">
       {/* Sessions Sidebar */}
-      <div className="w-64 shrink-0 flex flex-col rounded-lg border border-zinc-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)] overflow-hidden">
-        <div className="p-3 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+      <div className="w-64 shrink-0 flex flex-col rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-none overflow-hidden">
+        <div className="p-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-950/20">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
             Conversations
           </p>
           <button
             onClick={handleNewChat}
-            className="flex h-7 w-7 items-center justify-center rounded border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-colors shadow-sm"
+            className="flex h-7 w-7 items-center justify-center rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors shadow-sm"
             title="New Conversation"
           >
             <Plus size={14} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1.5 bg-white">
+        <div className="flex-1 overflow-y-auto p-2 space-y-1.5 bg-white dark:bg-zinc-900">
           {sessions.length === 0 ? (
-            <p className="text-[11px] text-zinc-400 text-center py-10 italic">No past chats.</p>
+            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 text-center py-10 italic">No past chats.</p>
           ) : (
             sessions.map((s) => (
               <div
@@ -410,8 +410,8 @@ export default function AIPage() {
                 className={cn(
                   "group flex items-center justify-between rounded-md px-2.5 py-2 text-xs cursor-pointer transition-all border",
                   activeSessionId === s.id
-                    ? "bg-zinc-50 border-zinc-200 text-zinc-900 font-semibold"
-                    : "text-zinc-500 border-transparent hover:bg-zinc-50/50 hover:text-zinc-700"
+                    ? "bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 font-semibold"
+                    : "text-zinc-500 dark:text-zinc-400 border-transparent hover:bg-zinc-50/50 dark:hover:bg-zinc-800/40 hover:text-zinc-700 dark:hover:text-zinc-200"
                 )}
               >
                 {editingSessionId === s.id ? (
@@ -420,7 +420,7 @@ export default function AIPage() {
                     onChange={(e) => setEditTitleInput(e.target.value)}
                     onBlur={() => handleSaveTitle(s.id)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle(s.id)}
-                    className="flex-1 bg-white border border-zinc-200 px-1 py-0.5 rounded outline-none text-zinc-800 text-[11px]"
+                    className="flex-1 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-1 py-0.5 rounded outline-none text-zinc-800 dark:text-zinc-100 text-[11px]"
                     autoFocus
                     onClick={(e) => e.stopPropagation()}
                   />
@@ -431,14 +431,14 @@ export default function AIPage() {
                 <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity ml-1 shrink-0">
                   <button
                     onClick={(e) => startEditing(s, e)}
-                    className="text-zinc-400 hover:text-zinc-700 transition-colors"
+                    className="text-zinc-400 dark:text-zinc-550 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
                     title="Rename"
                   >
                     <Edit2 size={11} />
                   </button>
                   <button
                     onClick={(e) => handleDeleteSession(s.id, e)}
-                    className="text-zinc-400 hover:text-red-600 transition-colors"
+                    className="text-zinc-400 dark:text-zinc-550 hover:text-red-650 dark:hover:text-red-400 transition-colors"
                     title="Delete"
                   >
                     <Trash2 size={11} />
@@ -451,16 +451,16 @@ export default function AIPage() {
       </div>
 
       {/* Chat panel */}
-      <div className="flex flex-1 flex-col rounded-lg border border-zinc-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)] overflow-hidden">
+      <div className="flex flex-1 flex-col rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-none overflow-hidden">
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 mb-4">
-                <Bot size={20} className="text-zinc-400" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 mb-4">
+                <Bot size={20} className="text-zinc-400 dark:text-zinc-500" />
               </div>
-              <p className="text-base font-semibold text-zinc-700">AI Assistant</p>
-              <p className="mt-1 text-sm text-zinc-400 max-w-xs">
+              <p className="text-base font-semibold text-zinc-700 dark:text-zinc-300">AI Assistant</p>
+              <p className="mt-1 text-sm text-zinc-400 dark:text-zinc-500 max-w-xs">
                 Ask me to analyze customers, create segments, or launch campaigns in plain English.
               </p>
               <div className="mt-6 grid grid-cols-2 gap-2 w-full max-w-md">
@@ -468,7 +468,7 @@ export default function AIPage() {
                   <button
                     key={s}
                     onClick={() => sendMessage(s)}
-                    className="rounded-lg border border-zinc-200 px-3 py-2.5 text-left text-xs text-zinc-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                    className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-2.5 text-left text-xs text-zinc-600 dark:text-zinc-400 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
                   >
                     {s}
                   </button>
@@ -486,12 +486,12 @@ export default function AIPage() {
                   animate={{ opacity: 1 }}
                   className="flex gap-3"
                 >
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white">
-                    <Bot size={13} className="text-zinc-500" />
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                    <Bot size={13} className="text-zinc-500 dark:text-zinc-400" />
                   </div>
-                  <div className="flex items-center gap-1 rounded-2xl rounded-tl-sm border border-zinc-200 bg-white px-4 py-3">
+                  <div className="flex items-center gap-1 rounded-2xl rounded-tl-sm border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3">
                     {[0, 1, 2].map((i) => (
-                      <span key={i} className="pulse-dot h-1.5 w-1.5 rounded-full bg-zinc-400" />
+                      <span key={i} className="pulse-dot h-1.5 w-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600" />
                     ))}
                   </div>
                 </motion.div>
@@ -502,8 +502,8 @@ export default function AIPage() {
         </div>
 
         {/* Input */}
-        <div className="border-t border-zinc-100 p-4">
-          <div className="flex items-end gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 focus-within:border-blue-300 focus-within:bg-white">
+        <div className="border-t border-zinc-100 dark:border-zinc-800 p-4">
+          <div className="flex items-end gap-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-3 focus-within:border-blue-300 dark:focus-within:border-blue-800 focus-within:bg-white dark:focus-within:bg-zinc-900">
             <textarea
               ref={textareaRef}
               value={input}
@@ -511,7 +511,7 @@ export default function AIPage() {
               onKeyDown={handleKeyDown}
               placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
               rows={1}
-              className="flex-1 resize-none bg-transparent text-sm text-zinc-900 placeholder-zinc-400 outline-none"
+              className="flex-1 resize-none bg-transparent text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none"
               style={{ maxHeight: 120 }}
             />
             <button
@@ -527,23 +527,23 @@ export default function AIPage() {
 
       {/* Context panel */}
       <div className="w-64 shrink-0 space-y-4">
-        <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-3">
+        <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-none">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-3">
             Created this session
           </p>
           {sessionCreations.length === 0 ? (
-            <p className="text-xs text-zinc-300">Nothing created yet. Ask AI to create a segment or campaign.</p>
+            <p className="text-xs text-zinc-300 dark:text-zinc-600">Nothing created yet. Ask AI to create a segment or campaign.</p>
           ) : (
             <div className="space-y-2">
               {sessionCreations.map((item, i) => (
                 <Link
                   key={i}
                   href={`/${item.type}s/${item.id}`}
-                  className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2 text-xs hover:bg-blue-50 border border-zinc-100 shadow-sm"
+                  className="flex items-center justify-between rounded-md bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-950/25 border border-zinc-100 dark:border-zinc-800 shadow-sm dark:shadow-none"
                 >
                   <div>
-                    <p className="font-medium text-zinc-700 capitalize text-[10px]">{item.type}</p>
-                    <p className="text-zinc-500 font-medium truncate max-w-[130px]">{item.name}</p>
+                    <p className="font-medium text-zinc-700 dark:text-zinc-300 capitalize text-[10px]">{item.type}</p>
+                    <p className="text-zinc-500 dark:text-zinc-400 font-medium truncate max-w-[130px]">{item.name}</p>
                   </div>
                 </Link>
               ))}
@@ -554,7 +554,7 @@ export default function AIPage() {
         {messages.length > 0 && activeSessionId && (
           <button
             onClick={(e) => handleDeleteSession(activeSessionId, e)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-200 py-2 text-xs text-zinc-400 hover:bg-zinc-50 hover:text-red-500 hover:border-red-100 transition-colors"
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2 text-xs text-zinc-400 dark:text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-red-500 hover:border-red-100 dark:hover:border-red-900 transition-colors"
           >
             <Trash2 size={12} /> Delete conversation
           </button>

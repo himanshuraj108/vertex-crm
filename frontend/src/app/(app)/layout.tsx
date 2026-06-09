@@ -10,7 +10,7 @@ import { CommandPalette } from '@/components/layout/CommandPalette';
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-[#FAFAFA]">
+      <div className="min-h-screen bg-background dark:bg-zinc-950 text-text-primary dark:text-zinc-50 transition-colors duration-200">
         <Sidebar />
         <Topbar />
         <CommandPalette />
