@@ -1,0 +1,46 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Vertex CRM Backend Service
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: vertex-crm-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        value: https://uyiktoxzhqlvfrqhudws.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: sb_publishable_3qDUWRSfgctjNA-04CHL2w_tcJRVGzo
+      - key: GROQ_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        value: https://vertexcrm-delta.vercel.app
+      - key: CHANNEL_SERVICE_URL
+        sync: false
+
+  # ---------------------------------------------------------------------------
+  # Vertex Channel Service (Simulator)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: vertex-channel-service
+    env: node
+    plan: free
+    rootDir: channel-service
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 3003
+      - key: NODE_ENV
+        value: production
+      - key: CRM_RECEIPT_URL
+        sync: false
