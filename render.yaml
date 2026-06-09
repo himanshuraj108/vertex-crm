@@ -7,8 +7,8 @@ services:
     env: node
     plan: free
     rootDir: backend
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    buildCommand: "[ -d backend ] && (cd backend && npm install && npm run build) || (npm install && npm run build)"
+    startCommand: "[ -d backend ] && (cd backend && npm start) || npm start"
     envVars:
       - key: PORT
         value: 3001
@@ -35,8 +35,8 @@ services:
     env: node
     plan: free
     rootDir: channel-service
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    buildCommand: "[ -d channel-service ] && (cd channel-service && npm install && npm run build) || (npm install && npm run build)"
+    startCommand: "[ -d channel-service ] && (cd channel-service && npm start) || npm start"
     envVars:
       - key: PORT
         value: 3003
