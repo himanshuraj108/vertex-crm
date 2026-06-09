@@ -21,7 +21,7 @@ export function createApp(): Application {
   app.use(helmet());
   app.use(
     cors({
-      origin: (origin, callback) => {
+      origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
         // Allow any localhost origin (frontend may be on any port)
         if (!origin || origin.startsWith('http://localhost') || origin === process.env.FRONTEND_URL) {
           callback(null, true);
