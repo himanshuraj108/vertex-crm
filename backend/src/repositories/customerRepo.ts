@@ -115,9 +115,111 @@ export const customerRepo = {
     const { data, error } = await supabase
       .from('customers')
       .upsert(customers, { onConflict: 'email', ignoreDuplicates: true })
-      .select('id');
+      .select('id, email, total_spend, order_count');
     if (error) throw new Error(error.message);
-    return data?.length ?? 0;
+
+    const insertedCustomers = data ?? [];
+    const ordersToInsert: any[] = [];
+    const customersToUpdate: Array<{ id: string; last_order_at: string }> = [];
+
+    const ITEMS_POOL = [
+      { name: 'Espresso', price: 180 },
+      { name: 'Cappuccino', price: 220 },
+      { name: 'Cold Brew', price: 260 },
+      { name: 'Matcha Latte', price: 280 },
+      { name: 'Flat White', price: 240 },
+      { name: 'Croissant', price: 150 },
+      { name: 'Cheesecake', price: 320 },
+      { name: 'Blueberry Muffin', price: 140 },
+      { name: 'Avocado Toast', price: 380 },
+    ];
+
+    for (const cust of insertedCustomers) {
+      if (cust.order_count > 0 && cust.total_spend > 0) {
+        let remainingSpend = cust.total_spend;
+        const count = Math.max(1, cust.order_count);
+        let latestOrderTime = 0;
+
+        for (let i = 0; i < count; i++) {
+          const isLast = i === count - 1;
+          let orderAmount = 0;
+          let orderItems: Array<{ name: string; qty: number; price: number }> = [];
+
+          if (isLast) {
+            orderAmount = Math.max(150, remainingSpend);
+            let tempAmount = orderAmount;
+            while (tempAmount > 0) {
+              const item = ITEMS_POOL[Math.floor(Math.random() * ITEMS_POOL.length)];
+              const qty = Math.max(1, Math.min(2, Math.floor(tempAmount / item.price)));
+              if (qty === 0) {
+                orderItems.push({ name: 'Croissant', qty: 1, price: tempAmount });
+                tempAmount = 0;
+              } else {
+                orderItems.push({ name: item.name, qty, price: item.price });
+                tempAmount -= qty * item.price;
+              }
+            }
+          } else {
+            const targetAvg = remainingSpend / (count - i);
+            orderAmount = Math.max(150, Math.floor(targetAvg * (0.6 + Math.random() * 0.8)));
+            if (orderAmount > remainingSpend - 150) {
+              orderAmount = Math.max(150, remainingSpend - 150);
+            }
+            remainingSpend -= orderAmount;
+
+            let tempAmount = orderAmount;
+            while (tempAmount > 0) {
+              const item = ITEMS_POOL[Math.floor(Math.random() * ITEMS_POOL.length)];
+              const qty = Math.max(1, Math.min(2, Math.floor(tempAmount / item.price)));
+              if (qty === 0) {
+                orderItems.push({ name: 'Croissant', qty: 1, price: tempAmount });
+                tempAmount = 0;
+              } else {
+                orderItems.push({ name: item.name, qty, price: item.price });
+                tempAmount -= qty * item.price;
+              }
+            }
+          }
+
+          const orderedAt = new Date(Date.now() - Math.floor(Math.random() * 180) * 24 * 60 * 60 * 1000);
+          if (orderedAt.getTime() > latestOrderTime) {
+            latestOrderTime = orderedAt.getTime();
+          }
+
+          ordersToInsert.push({
+            customer_id: cust.id,
+            amount: orderAmount,
+            items: orderItems,
+            channel: ['online', 'offline', 'app'][Math.floor(Math.random() * 3)],
+            status: 'completed',
+            ordered_at: orderedAt.toISOString(),
+          });
+        }
+
+        if (latestOrderTime > 0) {
+          customersToUpdate.push({
+            id: cust.id,
+            last_order_at: new Date(latestOrderTime).toISOString()
+          });
+        }
+      }
+    }
+
+    if (ordersToInsert.length > 0) {
+      const batchSize = 100;
+      for (let i = 0; i < ordersToInsert.length; i += batchSize) {
+        await supabase.from('orders').insert(ordersToInsert.slice(i, i + batchSize));
+      }
+    }
+
+    for (const update of customersToUpdate) {
+      await supabase
+        .from('customers')
+        .update({ last_order_at: update.last_order_at })
+        .eq('id', update.id);
+    }
+
+    return insertedCustomers.length;
   },
 
   async count(): Promise<number> {
