@@ -2,8 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { segmentsApi } from '@/lib/api-client';
-import { formatDate, formatRelativeTime } from '@/lib/utils';
-import { Target, Plus, Users, Sparkles, Trash2 } from 'lucide-react';
+import { formatDate, formatRelativeTime, cn } from '@/lib/utils';
+import { Target, Plus, Users, Sparkles, Trash2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import type { Segment } from '@/types';
@@ -11,7 +11,7 @@ import type { Segment } from '@/types';
 export default function SegmentsPage() {
   const qc = useQueryClient();
 
-  const { data, isLoading } = useQuery<Segment[]>({
+  const { data, isLoading, refetch, isRefetching } = useQuery<Segment[]>({
     queryKey: ['segments'],
     queryFn: () => segmentsApi.getAll() as Promise<Segment[]>,
   });
@@ -30,36 +30,47 @@ export default function SegmentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-zinc-900">Segments</h2>
-          <p className="mt-0.5 text-sm text-zinc-400">
+          <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">Segments</h2>
+          <p className="mt-0.5 text-sm text-zinc-400 dark:text-zinc-500">
             {data?.length ?? '—'} segments defined
           </p>
         </div>
-        <Link
-          href="/segments/new"
-          className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          <Plus size={14} />
-          Create Segment
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            className="flex items-center gap-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
+            title="Refresh segments list"
+          >
+            <RefreshCw size={14} className={cn(isRefetching && 'animate-spin')} />
+            Refresh
+          </button>
+          <Link
+            href="/segments/new"
+            className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={14} />
+            Create Segment
+          </Link>
+        </div>
       </div>
 
       {/* Grid */}
       {isLoading ? (
         <div className="grid grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="animate-pulse rounded-lg border border-zinc-200 bg-white p-5">
-              <div className="h-3 w-24 rounded bg-zinc-100 mb-2" />
-              <div className="h-4 w-32 rounded bg-zinc-100 mb-4" />
-              <div className="h-3 w-20 rounded bg-zinc-50" />
+            <div key={i} className="animate-pulse rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5">
+              <div className="h-3 w-24 rounded bg-zinc-100 dark:bg-zinc-800 mb-2" />
+              <div className="h-4 w-32 rounded bg-zinc-100 dark:bg-zinc-800 mb-4" />
+              <div className="h-3 w-20 rounded bg-zinc-50 dark:bg-zinc-800/40" />
             </div>
           ))}
         </div>
       ) : data?.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-zinc-200 bg-white py-20">
-          <Target size={32} className="text-zinc-300 mb-3" />
-          <p className="text-sm font-medium text-zinc-500">No segments yet</p>
-          <p className="mt-1 text-xs text-zinc-400">Create your first segment to target specific customers</p>
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-20">
+          <Target size={32} className="text-zinc-300 dark:text-zinc-650 mb-3" />
+          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">No segments yet</p>
+          <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">Create your first segment to target specific customers</p>
           <Link href="/segments/new" className="mt-4 flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
             <Plus size={14} /> Create Segment
           </Link>
@@ -70,15 +81,15 @@ export default function SegmentsPage() {
             <Link
               key={seg.id}
               href={`/segments/${seg.id}`}
-              className="group relative rounded-lg border border-zinc-200 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-all hover:border-blue-200 hover:shadow-md"
+              className="group relative rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-none transition-all hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-md"
             >
               <div className="flex items-start justify-between mb-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
-                  <Target size={14} className="text-blue-600" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40">
+                  <Target size={14} className="text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex items-center gap-1.5">
                   {seg.ai_generated && (
-                    <span className="flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-[11px] font-medium text-purple-600">
+                    <span className="flex items-center gap-1 rounded-full bg-purple-50 dark:bg-purple-950/30 px-2 py-0.5 text-[11px] font-medium text-purple-600 dark:text-purple-400 border border-transparent dark:border-purple-900/20">
                       <Sparkles size={10} /> AI
                     </span>
                   )}
@@ -87,25 +98,25 @@ export default function SegmentsPage() {
                       e.preventDefault();
                       if (confirm('Delete this segment?')) deleteMutation.mutate(seg.id);
                     }}
-                    className="opacity-0 group-hover:opacity-100 rounded p-1 text-zinc-300 hover:bg-red-50 hover:text-red-500 transition-all"
+                    className="opacity-0 group-hover:opacity-100 rounded p-1 text-zinc-300 dark:text-zinc-600 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 dark:hover:text-red-400 transition-all"
                   >
                     <Trash2 size={13} />
                   </button>
                 </div>
               </div>
 
-              <p className="font-semibold text-zinc-900 mb-1">{seg.name}</p>
+              <p className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">{seg.name}</p>
               {seg.description && (
-                <p className="text-xs text-zinc-400 mb-3 line-clamp-2">{seg.description}</p>
+                <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3 line-clamp-2">{seg.description}</p>
               )}
 
               <div className="flex items-center gap-1.5 text-sm">
-                <Users size={13} className="text-zinc-300" />
-                <span className="font-medium text-zinc-700">{seg.audience_size.toLocaleString()}</span>
-                <span className="text-zinc-400">customers</span>
+                <Users size={13} className="text-zinc-300 dark:text-zinc-650" />
+                <span className="font-medium text-zinc-700 dark:text-zinc-300">{seg.audience_size.toLocaleString()}</span>
+                <span className="text-zinc-400 dark:text-zinc-500">customers</span>
               </div>
 
-              <p className="mt-2 text-[11px] text-zinc-300">{formatRelativeTime(seg.created_at)}</p>
+              <p className="mt-2 text-[11px] text-zinc-400 dark:text-zinc-500">{formatRelativeTime(seg.created_at)}</p>
             </Link>
           ))}
         </div>
