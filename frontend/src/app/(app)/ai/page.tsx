@@ -151,6 +151,100 @@ function ToolCallCard({ toolCall }: { toolCall: AIToolCall }) {
           </div>
         );
 
+      case 'get_channel_stats': {
+        const best = res.best_channel_by_open_rate as string;
+        const channels = (res.channels ?? []) as Array<{
+          channel: string; campaigns: number; total_messages: number;
+          delivered: number; opened: number; clicked: number;
+          delivery_rate_pct: number; open_rate_pct: number; click_rate_pct: number;
+        }>;
+        return (
+          <div className="space-y-2">
+            {best && (
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Best channel by open rate:{' '}
+                <span className="font-semibold capitalize text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-900/30 px-1.5 py-0.5 rounded text-[10px]">
+                  {best}
+                </span>
+              </p>
+            )}
+            <div className="border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden bg-zinc-50 dark:bg-zinc-950 shadow-sm">
+              <table className="w-full text-left border-collapse text-[10px]">
+                <thead>
+                  <tr className="bg-zinc-100 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 font-medium">
+                    <th className="p-1.5 px-3">Channel</th>
+                    <th className="p-1.5 px-3 text-right">Messages</th>
+                    <th className="p-1.5 px-3 text-right">Delivery%</th>
+                    <th className="p-1.5 px-3 text-right">Open%</th>
+                    <th className="p-1.5 px-3 text-right">Click%</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                  {channels.map((ch) => (
+                    <tr key={ch.channel} className={`bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 ${ch.channel === best ? 'bg-green-50/60 dark:bg-green-950/20' : ''}`}>
+                      <td className="p-1.5 px-3 font-semibold capitalize text-zinc-900 dark:text-zinc-100">
+                        {ch.channel}
+                        {ch.channel === best && <span className="ml-1 text-green-600 dark:text-green-400">★</span>}
+                      </td>
+                      <td className="p-1.5 px-3 text-right">{ch.total_messages}</td>
+                      <td className="p-1.5 px-3 text-right">{ch.delivery_rate_pct}%</td>
+                      <td className="p-1.5 px-3 text-right font-semibold text-blue-600 dark:text-blue-400">{ch.open_rate_pct}%</td>
+                      <td className="p-1.5 px-3 text-right">{ch.click_rate_pct}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      }
+
+      case 'list_segments': {
+        const segs = (res.segments ?? []) as Array<{ id: string; name: string; description?: string; audience_size: number; ai_generated: boolean }>;
+        return (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">{res.count} segments found</p>
+            <div className="border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden bg-zinc-50 dark:bg-zinc-950 shadow-sm divide-y divide-zinc-100 dark:divide-zinc-800">
+              {segs.map((s) => (
+                <Link key={s.id} href={`/segments/${s.id}`} className="flex items-center justify-between px-3 py-2 bg-white dark:bg-zinc-900 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors group">
+                  <div>
+                    <p className="text-[11px] font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-blue-700 dark:group-hover:text-blue-400">{s.name}</p>
+                    {s.description && <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate max-w-[200px]">{s.description}</p>}
+                  </div>
+                  <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{s.audience_size.toLocaleString()} customers</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      case 'list_campaigns': {
+        const camps = (res.campaigns ?? []) as Array<{ id: string; name: string; status: string; channel: string; segment_name?: string }>;
+        const statusColors: Record<string, string> = {
+          draft: 'text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800',
+          running: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40',
+          completed: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/40',
+          failed: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40',
+        };
+        return (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">{res.count} campaigns</p>
+            <div className="border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
+              {camps.map((c) => (
+                <Link key={c.id} href={`/campaigns/${c.id}`} className="flex items-center justify-between px-3 py-2 bg-white dark:bg-zinc-900 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors group">
+                  <div>
+                    <p className="text-[11px] font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-blue-700 dark:group-hover:text-blue-400">{c.name}</p>
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 capitalize">{c.channel}{c.segment_name ? ` · ${c.segment_name}` : ''}</p>
+                  </div>
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize ${statusColors[c.status] ?? statusColors.draft}`}>{c.status}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
       default:
         return (
           <pre className="overflow-x-auto text-[10px] text-zinc-600 dark:text-zinc-400">
