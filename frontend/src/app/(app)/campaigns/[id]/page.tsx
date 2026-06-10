@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { campaignsApi, aiApi } from '@/lib/api-client';
 import { CHANNEL_CONFIG, STATUS_CONFIG, formatDate, formatPercent, formatCurrency, cn } from '@/lib/utils';
-import { ArrowLeft, Sparkles, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Sparkles, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { toast } from 'sonner';
@@ -75,6 +75,8 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
   const [aiAnalysis, setAiAnalysis] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'ai-report'>('overview');
+  const [commsPage, setCommsPage] = useState(1);
+  const [commsLimit, setCommsLimit] = useState(10);
 
   const { data: campaign, refetch: refetchCampaign, isRefetching: isRefetchingCampaign } = useQuery<Campaign>({
     queryKey: ['campaign', id],
@@ -82,9 +84,12 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
   });
 
   const { data: commsData, refetch: refetchComms, isRefetching: isRefetchingComms } = useQuery<PaginatedResponse<Communication>>({
-    queryKey: ['campaign-comms', id],
-    queryFn: () => campaignsApi.getCommunications(id, { limit: 20 }) as Promise<PaginatedResponse<Communication>>,
+    queryKey: ['campaign-comms', id, commsPage, commsLimit],
+    queryFn: () => campaignsApi.getCommunications(id, { page: commsPage, limit: commsLimit }) as Promise<PaginatedResponse<Communication>>,
   });
+
+  const commsTotal = commsData?.total ?? 0;
+  const commsTotalPages = Math.max(1, Math.ceil(commsTotal / commsLimit));
 
   // SSE for live stats
   useEffect(() => {
@@ -285,9 +290,32 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
           {/* Communications Table */}
           {commsData && (commsData.data?.length ?? 0) > 0 && (
             <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-              <div className="border-b border-zinc-100 dark:border-zinc-800 px-5 py-4">
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Communications Log</p>
+              {/* Table header */}
+              <div className="border-b border-zinc-100 dark:border-zinc-800 px-5 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Communications Log</p>
+                  {commsTotal > 0 && (
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
+                      {commsTotal.toLocaleString()} total messages
+                    </p>
+                  )}
+                </div>
+                {/* Per-page selector */}
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-zinc-500 dark:text-zinc-400">Rows</label>
+                  <select
+                    value={commsLimit}
+                    onChange={(e) => { setCommsLimit(Number(e.target.value)); setCommsPage(1); }}
+                    className="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1 text-xs font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
               </div>
+
+              {/* Table body */}
               <table className="data-table">
                 <thead>
                   <tr>
@@ -301,7 +329,7 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
                 <tbody>
                   {commsData.data.map((c: Communication) => (
                     <tr key={c.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                      <td className="font-medium text-zinc-900 dark:text-zinc-100">{c.customer_name ?? c.customer_id.slice(0,8)}</td>
+                      <td className="font-medium text-zinc-900 dark:text-zinc-100">{c.customer_name ?? c.customer_id.slice(0, 8)}</td>
                       <td className="max-w-[200px] truncate text-xs text-zinc-500 dark:text-zinc-400">{c.message}</td>
                       <td>
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CONFIG[c.status]?.className}`}>
@@ -314,6 +342,37 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
                   ))}
                 </tbody>
               </table>
+
+              {/* Pagination footer */}
+              <div className="border-t border-zinc-100 dark:border-zinc-800 px-5 py-3 flex items-center justify-between">
+                <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                  Page <span className="font-medium text-zinc-600 dark:text-zinc-300">{commsPage}</span> of{' '}
+                  <span className="font-medium text-zinc-600 dark:text-zinc-300">{commsTotalPages}</span>
+                  {commsTotal > 0 && (
+                    <span className="ml-2 text-zinc-400 dark:text-zinc-500">
+                      · Showing{' '}
+                      {((commsPage - 1) * commsLimit + 1).toLocaleString()}–{Math.min(commsPage * commsLimit, commsTotal).toLocaleString()}{' '}
+                      of {commsTotal.toLocaleString()}
+                    </span>
+                  )}
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCommsPage((p) => Math.max(1, p - 1))}
+                    disabled={commsPage === 1 || isRefetchingComms}
+                    className="flex items-center gap-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft size={13} /> Prev
+                  </button>
+                  <button
+                    onClick={() => setCommsPage((p) => Math.min(commsTotalPages, p + 1))}
+                    disabled={commsPage >= commsTotalPages || isRefetchingComms}
+                    className="flex items-center gap-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next <ChevronRight size={13} />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

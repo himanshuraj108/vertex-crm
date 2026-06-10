@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import ReactMarkdown from 'react-markdown';
+
 import { aiApi } from '@/lib/api-client';
 import { Bot, Send, User, ChevronDown, ChevronUp, Sparkles, X, Edit2, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,17 +10,30 @@ import { cn } from '@/lib/utils';
 import type { AIMessage, AIToolCall, ChatSession } from '@/types';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useAIStore } from '@/stores/useAIStore';
 
 const SUGGESTIONS = [
   "Show me customers who haven't ordered in 60 days",
   "Create a re-engagement segment for churning customers",
   "Draft a Diwali campaign message for high-value customers",
   "Which channel has the best open rate this month?",
+  "Show me top 10 highest spending customers",
+  "List all active campaigns and their status",
+];
+
+const FOLLOW_UPS = [
+  "Create a segment for these customers",
+  "Launch a WhatsApp campaign for this segment",
+  "Show me analytics summary",
+  "Which channel has the best open rate?",
+  "Draft an SMS message for re-engagement",
+  "Show me all existing segments",
 ];
 
 function ToolCallCard({ toolCall }: { toolCall: AIToolCall }) {
-  const [expanded, setExpanded] = useState(false);
-  const label = ((toolCall as unknown) as Record<string, unknown>).tool as string ?? toolCall.name ?? 'tool call';
+  const [expanded, setExpanded] = useState(true);
+  const raw = (toolCall as unknown) as Record<string, unknown>;
+  const label = (raw.tool as string) ?? (raw.toolName as string) ?? toolCall.name ?? 'tool call';
   const displayName = label.replace(/_/g, ' ');
 
   const renderResult = () => {
@@ -123,9 +137,22 @@ function ToolCallCard({ toolCall }: { toolCall: AIToolCall }) {
 
       case 'launch_campaign':
         return (
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <p className="text-xs text-green-700 dark:text-green-400 font-semibold">{res.message || 'Campaign launched!'}</p>
-            <p className="text-xs text-zinc-600 dark:text-zinc-400">Status: <span className="capitalize font-semibold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/40 border border-transparent dark:border-green-900/20 px-1.5 py-0.5 rounded text-[10px]">{res.status}</span></p>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              Status:{' '}
+              <span className="capitalize font-semibold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/40 border border-transparent dark:border-green-900/20 px-1.5 py-0.5 rounded text-[10px]">
+                {res.status}
+              </span>
+            </p>
+            {res.campaign_id && (
+              <Link
+                href={`/campaigns/${res.campaign_id}`}
+                className="inline-flex items-center text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline"
+              >
+                View Campaign tracker →
+              </Link>
+            )}
           </div>
         );
 
@@ -279,6 +306,9 @@ function ToolCallCard({ toolCall }: { toolCall: AIToolCall }) {
 
 function MessageBubble({ msg }: { msg: AIMessage }) {
   const isUser = msg.role === 'user';
+  const hasContent = !!(msg.content && msg.content.trim());
+  const hasToolCalls = !!(msg.toolCalls && msg.toolCalls.length > 0);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -292,14 +322,55 @@ function MessageBubble({ msg }: { msg: AIMessage }) {
         {isUser ? <User size={13} className="text-white" /> : <Bot size={13} className="text-zinc-550 dark:text-zinc-400" />}
       </div>
       <div className={cn('max-w-[80%] space-y-1', isUser ? 'items-end' : 'items-start')}>
-        <div className={cn(
-          'rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap',
-          isUser
-            ? 'rounded-tr-sm bg-blue-600 text-white'
-            : 'rounded-tl-sm border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200'
-        )}>
-          {msg.content}
-        </div>
+        {(isUser || hasContent) && (
+          <div className={cn(
+            'rounded-2xl px-4 py-3 text-sm leading-relaxed',
+            isUser
+              ? 'rounded-tr-sm bg-blue-600 text-white whitespace-pre-wrap'
+              : 'rounded-tl-sm border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200'
+          )}>
+            {isUser ? (
+              msg.content
+            ) : (
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                  strong: ({ children }) => <strong className="font-semibold text-zinc-900 dark:text-zinc-100">{children}</strong>,
+                  em: ({ children }) => <em className="italic text-zinc-700 dark:text-zinc-300">{children}</em>,
+                  code: ({ children }) => (
+                    <code className="font-mono text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
+                      {children}
+                    </code>
+                  ),
+                  pre: ({ children }) => (
+                    <pre className="my-2 overflow-x-auto rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-3 text-xs font-mono text-zinc-800 dark:text-zinc-200">
+                      {children}
+                    </pre>
+                  ),
+                  ul: ({ children }) => <ul className="list-disc list-inside space-y-0.5 my-1.5 text-zinc-700 dark:text-zinc-300">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal list-inside space-y-0.5 my-1.5 text-zinc-700 dark:text-zinc-300">{children}</ol>,
+                  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                  h1: ({ children }) => <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1 mt-2">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1 mt-2">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-0.5 mt-1.5">{children}</h3>,
+                  blockquote: ({ children }) => (
+                    <blockquote className="border-l-2 border-zinc-300 dark:border-zinc-600 pl-3 italic text-zinc-500 dark:text-zinc-400 my-1.5">
+                      {children}
+                    </blockquote>
+                  ),
+                  hr: () => <hr className="my-2 border-zinc-200 dark:border-zinc-700" />,
+                  a: ({ href, children }) => (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:text-blue-700">
+                      {children}
+                    </a>
+                  ),
+                }}
+              >
+                {msg.content ?? ''}
+              </ReactMarkdown>
+            )}
+          </div>
+        )}
         {msg.toolCalls?.map((tc, i) => <ToolCallCard key={i} toolCall={tc} />)}
       </div>
     </motion.div>
@@ -307,26 +378,25 @@ function MessageBubble({ msg }: { msg: AIMessage }) {
 }
 
 export default function AIPage() {
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const {
+    sessions,
+    activeSessionId,
+    messages,
+    isStreaming,
+    sessionCreations,
+    loadSessions,
+    selectSession,
+    createSession,
+    deleteSession,
+    updateSessionTitle,
+    sendMessage,
+  } = useAIStore();
+
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editTitleInput, setEditTitleInput] = useState('');
-  
-  const [messages, setMessages] = useState<AIMessage[]>([]);
   const [input, setInput] = useState('');
-  const [sessionCreations, setSessionCreations] = useState<Array<{ type: string; name: string; id: string }>>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const loadSessions = async (selectLatest = false) => {
-    try {
-      const res = await aiApi.getSessions() as ChatSession[];
-      setSessions(res);
-      if (selectLatest && res.length > 0 && !activeSessionId) {
-        selectSession(res[0].id, res);
-      }
-    } catch {}
-  };
 
   useEffect(() => {
     loadSessions(true);
@@ -334,48 +404,16 @@ export default function AIPage() {
 
   const handleNewChat = async () => {
     try {
-      const newSession = await aiApi.createSession() as ChatSession;
-      setSessions((prev) => [newSession, ...prev]);
-      setActiveSessionId(newSession.id);
-      setMessages([]);
-      setSessionCreations([]);
+      await createSession();
     } catch (err) {
       toast.error('Failed to create new chat session');
-    }
-  };
-
-  const selectSession = (sessionId: string, currentSessions = sessions) => {
-    setActiveSessionId(sessionId);
-    const session = currentSessions.find((s) => s.id === sessionId);
-    if (session) {
-      setMessages(session.messages || []);
-      const creations: Array<{ type: string; name: string; id: string }> = [];
-      session.messages?.forEach((msg) => {
-        msg.toolCalls?.forEach((tc) => {
-          const toolName = ((tc as unknown) as Record<string, unknown>).tool as string ?? tc.name;
-          const result = tc.result as Record<string, unknown>;
-          if (toolName === 'create_segment' && result?.segment_id) {
-            creations.push({ type: 'segment', name: String(result?.name ?? 'Segment'), id: String(result.segment_id) });
-          }
-          if (toolName === 'create_campaign' && result?.campaign_id) {
-            creations.push({ type: 'campaign', name: String(result?.name ?? 'Campaign'), id: String(result.campaign_id) });
-          }
-        });
-      });
-      setSessionCreations(creations);
     }
   };
 
   const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await aiApi.deleteSession(sessionId);
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-      if (activeSessionId === sessionId) {
-        setActiveSessionId(null);
-        setMessages([]);
-        setSessionCreations([]);
-      }
+      await deleteSession(sessionId);
       toast.success('Chat deleted');
     } catch {
       toast.error('Failed to delete session');
@@ -391,8 +429,7 @@ export default function AIPage() {
   const handleSaveTitle = async (sessionId: string) => {
     if (!editTitleInput.trim()) return;
     try {
-      await aiApi.updateSession(sessionId, editTitleInput);
-      setSessions((prev) => prev.map((s) => s.id === sessionId ? { ...s, title: editTitleInput } : s));
+      await updateSessionTitle(sessionId, editTitleInput);
       setEditingSessionId(null);
       toast.success('Title updated');
     } catch {
@@ -400,80 +437,20 @@ export default function AIPage() {
     }
   };
 
-  const chatMutation = useMutation({
-    mutationFn: ({ msgs, sessionId }: { msgs: AIMessage[]; sessionId: string }) =>
-      aiApi.chat(
-        msgs.map((m) => ({ role: m.role, content: m.content })),
-        sessionId
-      ) as Promise<{
-        message: string;
-        toolCalls: AIToolCall[];
-      }>,
-    onSuccess: (data, variables) => {
-      const assistantMsg: AIMessage = {
-        role: 'assistant',
-        content: data.message ?? '(no response)',
-        toolCalls: data.toolCalls ?? [],
-        timestamp: new Date().toISOString(),
-      };
-      setMessages([...variables.msgs, assistantMsg]);
-
-      // Track creations
-      const creations = [...sessionCreations];
-      data.toolCalls?.forEach((tc) => {
-        const toolName = ((tc as unknown) as Record<string, unknown>).tool as string ?? tc.name;
-        const result = tc.result as Record<string, unknown>;
-        if (toolName === 'create_segment' && result?.segment_id) {
-          creations.push({ type: 'segment', name: String(result?.name ?? 'Segment'), id: String(result.segment_id) });
-        }
-        if (toolName === 'create_campaign' && result?.campaign_id) {
-          creations.push({ type: 'campaign', name: String(result?.name ?? 'Campaign'), id: String(result.campaign_id) });
-        }
-      });
-      setSessionCreations(creations);
-      loadSessions(false);
-    },
-    onError: () => {
-      const errMsg: AIMessage = {
-        role: 'assistant',
-        content: 'Sorry, I ran into an error. Please try again.',
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, errMsg]);
-    },
-  });
-
-  const sendMessage = async (content: string) => {
-    if (!content.trim() || chatMutation.isPending) return;
-
-    let targetSessionId = activeSessionId;
-    if (!targetSessionId) {
-      try {
-        const newSession = await aiApi.createSession() as ChatSession;
-        targetSessionId = newSession.id;
-        setActiveSessionId(targetSessionId);
-        setSessions((prev) => [newSession, ...prev]);
-      } catch {
-        toast.error('Failed to initialize conversation');
-        return;
-      }
-    }
-
-    const userMsg: AIMessage = { role: 'user', content, timestamp: new Date().toISOString() };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
+  const handleSend = async (content: string) => {
+    if (!content.trim() || isStreaming) return;
     setInput('');
-    chatMutation.mutate({ msgs: newMessages, sessionId: targetSessionId });
+    await sendMessage(content);
   };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, chatMutation.isPending]);
+  }, [messages, isStreaming]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessage(input);
+      handleSend(input);
     }
   };
 
@@ -561,7 +538,7 @@ export default function AIPage() {
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s}
-                    onClick={() => sendMessage(s)}
+                    onClick={() => handleSend(s)}
                     className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-2.5 text-left text-xs text-zinc-600 dark:text-zinc-400 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
                   >
                     {s}
@@ -571,10 +548,22 @@ export default function AIPage() {
             </div>
           ) : (
             <AnimatePresence initial={false}>
-              {messages.map((msg, i) => (
-                <MessageBubble key={i} msg={msg} />
-              ))}
-              {chatMutation.isPending && (
+              {messages.map((msg, i) => {
+                // Skip rendering the empty assistant placeholder while streaming
+                // (it has no content and no tool calls yet — loading dots handle the visual)
+                const isEmptyStreamingPlaceholder =
+                  isStreaming &&
+                  i === messages.length - 1 &&
+                  msg.role === 'assistant' &&
+                  !msg.content &&
+                  !(msg.toolCalls?.length);
+                if (isEmptyStreamingPlaceholder) return null;
+                return <MessageBubble key={i} msg={msg} />;
+              })}
+              {/* Loading dots — only show when no content and no tool cards yet */}
+              {isStreaming && messages.length > 0 &&
+                !messages[messages.length - 1]?.content &&
+                !(messages[messages.length - 1]?.toolCalls?.length) && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -588,6 +577,25 @@ export default function AIPage() {
                       <span key={i} className="pulse-dot h-1.5 w-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600" />
                     ))}
                   </div>
+                </motion.div>
+              )}
+              {/* Follow-up suggestions after AI responds */}
+              {!isStreaming && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && messages[messages.length - 1]?.content && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15, duration: 0.25 }}
+                  className="flex flex-wrap gap-2 pl-10"
+                >
+                  {FOLLOW_UPS.slice(0, 3).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => handleSend(s)}
+                      className="rounded-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-700 dark:hover:text-blue-400 transition-all duration-150 shadow-sm"
+                    >
+                      {s}
+                    </button>
+                  ))}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -608,13 +616,20 @@ export default function AIPage() {
               className="flex-1 resize-none bg-transparent text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none"
               style={{ maxHeight: 120 }}
             />
-            <button
-              onClick={() => sendMessage(input)}
-              disabled={!input.trim() || chatMutation.isPending}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
-            >
-              <Send size={14} />
-            </button>
+            {isStreaming ? (
+              <div className="relative flex h-9 w-9 shrink-0 items-center justify-center">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-60" />
+                <span className="relative inline-flex h-5 w-5 rounded-full bg-red-600 shadow-lg shadow-red-500/50" />
+              </div>
+            ) : (
+              <button
+                onClick={() => handleSend(input)}
+                disabled={!input.trim()}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
+              >
+                <Send size={14} />
+              </button>
+            )}
           </div>
         </div>
       </div>
