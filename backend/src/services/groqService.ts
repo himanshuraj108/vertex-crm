@@ -204,6 +204,28 @@ const AI_TOOLS: CompletionCreateParams.Tool[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'list_segments',
+      description: 'List all saved customer segments with their name, description, and audience size. Use this to find segment IDs before creating a campaign.',
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_channel_stats',
+      description: 'Get performance statistics (delivery rate, open rate, click rate) broken down by channel (whatsapp, sms, email, rcs). Use this to answer questions like "which channel has the best open rate" or "how is email performing".',
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+    },
+  },
 ];
 
 function buildSystemPrompt(): string {

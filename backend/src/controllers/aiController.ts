@@ -236,6 +236,74 @@ async function executeToolCall(
       };
     }
 
+    case 'list_segments': {
+      const segments = await segmentRepo.findAll();
+      return {
+        count: segments.length,
+        segments: segments.map((s) => ({
+          id: s.id,
+          name: s.name,
+          description: s.description,
+          audience_size: s.audience_size,
+          ai_generated: s.ai_generated,
+        })),
+      };
+    }
+
+    case 'get_channel_stats': {
+      const { data: rows, error } = await supabase.rpc('get_channel_open_rates');
+
+      if (error || !rows) {
+        const { data: campRows } = await supabase
+          .from('campaigns')
+          .select('channel, id, name, status');
+
+        const { data: statsRows } = await supabase
+          .from('campaign_stats')
+          .select('campaign_id, total, sent, delivered, failed, opened, clicked');
+
+        const statsMap: Record<string, { total: number; sent: number; delivered: number; opened: number; clicked: number }> = {};
+        for (const s of (statsRows ?? []) as Array<{ campaign_id: string; total: number; sent: number; delivered: number; opened: number; clicked: number }>) {
+          statsMap[s.campaign_id] = s;
+        }
+
+        const channelMap: Record<string, { total: number; delivered: number; opened: number; clicked: number; campaigns: number }> = {};
+        for (const c of (campRows ?? []) as Array<{ channel: string; id: string; name: string; status: string }>) {
+          if (!channelMap[c.channel]) {
+            channelMap[c.channel] = { total: 0, delivered: 0, opened: 0, clicked: 0, campaigns: 0 };
+          }
+          const st = statsMap[c.id];
+          if (st) {
+            channelMap[c.channel].total += st.total || 0;
+            channelMap[c.channel].delivered += st.delivered || 0;
+            channelMap[c.channel].opened += st.opened || 0;
+            channelMap[c.channel].clicked += st.clicked || 0;
+          }
+          channelMap[c.channel].campaigns += 1;
+        }
+
+        const result = Object.entries(channelMap).map(([channel, stats]) => ({
+          channel,
+          campaigns: stats.campaigns,
+          total_messages: stats.total,
+          delivered: stats.delivered,
+          opened: stats.opened,
+          clicked: stats.clicked,
+          delivery_rate_pct: stats.total > 0 ? Math.round((stats.delivered / stats.total) * 1000) / 10 : 0,
+          open_rate_pct: stats.delivered > 0 ? Math.round((stats.opened / stats.delivered) * 1000) / 10 : 0,
+          click_rate_pct: stats.opened > 0 ? Math.round((stats.clicked / stats.opened) * 1000) / 10 : 0,
+        }));
+
+        result.sort((a, b) => b.open_rate_pct - a.open_rate_pct);
+        return {
+          best_channel_by_open_rate: result[0]?.channel ?? 'N/A',
+          channels: result,
+        };
+      }
+
+      return rows;
+    }
+
     default:
       throw new Error(`Unknown tool: ${toolName}`);
   }
