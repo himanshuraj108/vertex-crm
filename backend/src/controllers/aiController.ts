@@ -4,12 +4,14 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { ApiError } from '../utils/ApiError';
 import {
   chatWithAgent,
+  chatWithAgentStream,
   parseSegmentFromNL,
   draftCampaignMessage,
   analyzeCampaign,
   suggestSegments,
   ChatMessage,
   generateChatTitle,
+  StreamEvent,
 } from '../services/groqService';
 import { chatSessionRepo } from '../repositories/chatSessionRepo';
 import { customerRepo } from '../repositories/customerRepo';
@@ -61,6 +63,9 @@ async function executeToolCall(
         max_spend,
         days_since_last_order_gt,
         order_count_gte,
+        sort_field,
+        sort_order,
+        limit: queryLimit,
       } = args as {
         city?: string;
         gender?: string;
@@ -68,27 +73,21 @@ async function executeToolCall(
         max_spend?: number;
         days_since_last_order_gt?: number;
         order_count_gte?: number;
+        sort_field?: string;
+        sort_order?: 'ASC' | 'DESC';
+        limit?: number;
       };
 
       const conditions: SegmentRules['conditions'] = [];
 
       if (city && city.trim() !== '') conditions.push({ field: 'city', operator: 'eq', value: city });
-      if (gender && gender.trim() !== '')
-        conditions.push({
-          field: 'gender',
-          operator: 'eq',
-          value: gender,
-        });
+      if (gender && gender.trim() !== '') conditions.push({ field: 'gender', operator: 'eq', value: gender });
       if (min_spend !== undefined && min_spend > 0)
         conditions.push({ field: 'total_spend', operator: 'gte', value: min_spend });
       if (max_spend !== undefined && max_spend > 0)
         conditions.push({ field: 'total_spend', operator: 'lte', value: max_spend });
       if (days_since_last_order_gt !== undefined && days_since_last_order_gt > 0)
-        conditions.push({
-          field: 'days_since_last_order',
-          operator: 'gt',
-          value: days_since_last_order_gt,
-        });
+        conditions.push({ field: 'days_since_last_order', operator: 'gt', value: days_since_last_order_gt });
       if (order_count_gte !== undefined && order_count_gte > 0)
         conditions.push({ field: 'order_count', operator: 'gte', value: order_count_gte });
 
@@ -97,10 +96,22 @@ async function executeToolCall(
           ? { logic: 'AND', conditions }
           : { logic: 'AND', conditions: [{ field: 'order_count', operator: 'gte', value: 0 }] };
 
-      const customers = await customerRepo.findForSegment(rules);
+      let customers = await customerRepo.findForSegment(rules);
+
+      // Apply sort if requested (in-memory sort on returned rows)
+      if (sort_field) {
+        const dir = sort_order === 'ASC' ? 1 : -1;
+        customers = [...customers].sort((a, b) => {
+          const aVal = Number((a as unknown as Record<string, unknown>)[sort_field] ?? 0);
+          const bVal = Number((b as unknown as Record<string, unknown>)[sort_field] ?? 0);
+          return (aVal - bVal) * dir;
+        });
+      }
+
+      const returnLimit = Math.min(queryLimit ?? 10, 100);
       return {
         count: customers.length,
-        customers: customers.slice(0, 10).map((c) => ({
+        customers: customers.slice(0, returnLimit).map((c) => ({
           id: c.id,
           name: c.name,
           city: c.city,
@@ -108,7 +119,7 @@ async function executeToolCall(
           order_count: c.order_count,
           last_order_at: c.last_order_at,
         })),
-        note: customers.length > 10 ? `Showing 10 of ${customers.length} results` : undefined,
+        note: customers.length > returnLimit ? `Showing top ${returnLimit} of ${customers.length} results` : undefined,
       };
     }
 
@@ -152,17 +163,39 @@ async function executeToolCall(
       if (UUID_REGEX.test(segment_id)) {
         resolvedSegmentId = segment_id;
       } else {
+        const cleanName = segment_id.trim();
+        // Try exact/case-insensitive match first
         const { data: segRows } = await supabase
           .from('segments')
           .select('id')
-          .ilike('name', segment_id.trim())
+          .ilike('name', cleanName)
           .limit(1);
-        if (!segRows || segRows.length === 0) {
+
+        if (segRows && segRows.length > 0) {
+          resolvedSegmentId = (segRows[0] as { id: string }).id;
+        } else {
+          // If exact match fails, normalize hyphens/underscores/spaces and look up all segments
+          const normalizedInput = cleanName.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').toLowerCase();
+          const { data: allSegs } = await supabase
+            .from('segments')
+            .select('id, name');
+
+          if (allSegs) {
+            const match = allSegs.find((s) => {
+              const normName = s.name.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').toLowerCase();
+              return normName === normalizedInput;
+            });
+            if (match) {
+              resolvedSegmentId = match.id;
+            }
+          }
+        }
+
+        if (!resolvedSegmentId) {
           return {
             error: `Segment "${segment_id}" not found. Please use list_segments to get the correct segment ID or name.`,
           };
         }
-        resolvedSegmentId = (segRows[0] as { id: string }).id;
       }
 
       const campaign = await campaignRepo.create({
@@ -176,11 +209,18 @@ async function executeToolCall(
 
     case 'launch_campaign': {
       const { campaign_id } = args as { campaign_id: string };
+      const campaignToLaunch = await campaignRepo.findById(campaign_id);
+      const campaignName = campaignToLaunch?.name ?? campaign_id;
 
       campaignService.launch(campaign_id).catch((err: Error) => {
         console.error(`AI-initiated campaign launch failed: ${err.message}`);
       });
-      return { message: `Campaign ${campaign_id} launch initiated`, status: 'running' };
+      return {
+        message: `"${campaignName}" launch initiated`,
+        status: 'running',
+        campaign_id,
+        name: campaignName,
+      };
     }
 
     case 'get_campaign_stats': {
@@ -221,7 +261,7 @@ async function executeToolCall(
     }
 
     case 'list_campaigns': {
-      const { status } = args as { status?: string };
+      const { status } = (args ?? {}) as { status?: string };
       const campaigns = await campaignRepo.findAll(status);
       return {
         count: campaigns.length,
@@ -360,6 +400,91 @@ export const chat = asyncHandler(async (req: Request, res: Response) => {
     },
   });
 });
+
+export const chatStream = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { messages, conversationId } = ChatSchema.parse(req.body);
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    const allToolCalls: Array<{ tool: string; args: Record<string, unknown>; result: unknown }> = [];
+    let finalText = '';
+    let streamEnded = false;
+
+    const write = (event: object) => {
+      if (!streamEnded) res.write(`data: ${JSON.stringify(event)}\n\n`);
+    };
+
+    // Hard timeout: 60s — if still running, force close
+    const hardTimeoutId = setTimeout(() => {
+      if (!streamEnded) {
+        streamEnded = true;
+        res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+        res.end();
+      }
+    }, 60000);
+
+    try {
+      const gen = chatWithAgentStream(messages as ChatMessage[], executeToolCall);
+
+      for await (const event of gen) {
+        if (streamEnded) break;
+        if (event.type === 'tool_call') {
+          allToolCalls.push({ tool: event.data.toolName, args: event.data.args, result: event.data.result });
+          write(event);
+        } else if (event.type === 'text_chunk') {
+          finalText += event.content;
+          write(event);
+        } else if (event.type === 'error') {
+          write(event);
+        } else if (event.type === 'done') {
+          write(event);
+          break;
+        }
+      }
+    } finally {
+      clearTimeout(hardTimeoutId);
+    }
+
+    if (!streamEnded) {
+      streamEnded = true;
+      if (conversationId) {
+        try {
+          const session = await chatSessionRepo.findById(conversationId);
+          if (session) {
+            const lastUserMsg = messages[messages.length - 1];
+            const assistantMsg = {
+              role: 'assistant',
+              content: finalText,
+              toolCalls: allToolCalls,
+              timestamp: new Date().toISOString(),
+            };
+            const updatedMessages = [
+              ...session.messages,
+              { ...lastUserMsg, timestamp: new Date().toISOString() },
+              assistantMsg,
+            ];
+            let updatedTitle = session.title;
+            if (session.title === 'New Conversation' || !session.title || session.messages.length === 0) {
+              updatedTitle = await generateChatTitle(lastUserMsg.content || '');
+            }
+            await chatSessionRepo.update(conversationId, { title: updatedTitle, messages: updatedMessages });
+          }
+        } catch { /* non-fatal */ }
+      }
+      res.end();
+    }
+  } catch (err: any) {
+    if (!res.headersSent) {
+      res.write(`data: ${JSON.stringify({ type: 'error', message: err?.message ?? 'Failed' })}\n\n`);
+    }
+    res.end();
+  }
+};
 
 export const parseSegment = asyncHandler(async (req: Request, res: Response) => {
   const { description } = ParseSegmentSchema.parse(req.body);

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   chat,
+  chatStream,
   parseSegment,
   draftMessage,
   analyzeCampaignHandler,
@@ -21,6 +22,7 @@ router.patch('/sessions/:id', updateSession);
 router.delete('/sessions/:id', deleteSession);
 
 router.post('/chat', chat);
+router.post('/chat/stream', chatStream);
 
 router.post('/parse-segment', parseSegment);
 
