@@ -1,8 +1,6 @@
 import { supabase } from '../db/supabase';
 import { Customer, SegmentRules } from '../types';
 
-// ─── SQL WHERE clause builder for segment rules ───────────────────────────────
-
 function buildSegmentFilter(
   rules: SegmentRules
 ): { sql: string; params: unknown[] } {
@@ -36,8 +34,6 @@ function buildSegmentFilter(
   const joiner = rules.logic === 'OR' ? ' OR ' : ' AND ';
   return { sql: parts.join(joiner), params };
 }
-
-// ─── Repository ───────────────────────────────────────────────────────────────
 
 export const customerRepo = {
   async findAll(
@@ -230,26 +226,24 @@ export const customerRepo = {
     return count ?? 0;
   },
 
-  // For segment evaluation — uses Supabase's built-in filters for simple conditions
   async findForSegment(rules: SegmentRules): Promise<Customer[]> {
-    // For complex conditions (days_since_last_order), fall back to rpc
+
     const hasComplexField = rules.conditions.some(
       (c) => c.field === 'days_since_last_order'
     );
 
     if (hasComplexField || rules.logic === 'OR') {
-      // Use RPC function for complex queries
+
       const { data, error } = await supabase.rpc('evaluate_segment', {
         rules_json: rules,
       });
       if (error) {
-        // Fallback: approximate with simpler query
+
         return this.findForSegmentFallback(rules);
       }
       return (data ?? []) as Customer[];
     }
 
-    // Build simple Supabase filter chain for AND conditions without complex fields
     let q = supabase.from('customers').select('*');
 
     for (const cond of rules.conditions) {
@@ -291,7 +285,7 @@ export const customerRepo = {
         case 'gte': return Number(val) >= Number(condVal);
         case 'lt': return Number(val) < Number(condVal);
         case 'lte': return Number(val) <= Number(condVal);
-        case 'eq': 
+        case 'eq':
           if (typeof val === 'string' && typeof condVal === 'string') {
             return val.toLowerCase() === condVal.toLowerCase();
           }
@@ -311,7 +305,7 @@ export const customerRepo = {
 
     return allCustomers.filter(c => {
       if (!rules.conditions || rules.conditions.length === 0) return true;
-      
+
       const results = rules.conditions.map(cond => evaluateConditionInMemory(c, cond));
       if (rules.logic === 'OR') {
         return results.some(r => r === true);

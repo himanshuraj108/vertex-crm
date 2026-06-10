@@ -6,7 +6,7 @@ export function errorHandler(
   err: Error,
   req: Request,
   res: Response,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   _next: NextFunction
 ): void {
   if (err instanceof ApiError) {
@@ -28,7 +28,6 @@ export function errorHandler(
     return;
   }
 
-  // Unknown / unexpected errors
   logger.error('Unhandled error', {
     message: err.message,
     stack: err.stack,

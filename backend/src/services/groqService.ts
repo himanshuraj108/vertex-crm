@@ -47,7 +47,6 @@ const SEGMENT_RULES_SCHEMA = {
 
 type ChatCompletionCreateParams = Parameters<typeof groq.chat.completions.create>[0];
 
-// Helper to perform chat completion with fallback to fallback client and llama-3.1-8b-instant
 async function createChatCompletion(
   params: Omit<ChatCompletionCreateParams, 'model'> & { model?: string }
 ): Promise<any> {
@@ -76,8 +75,6 @@ async function createChatCompletion(
     }
   }
 }
-
-// ─── AI Tool definitions ──────────────────────────────────────────────────────
 
 const AI_TOOLS: CompletionCreateParams.Tool[] = [
   {
@@ -206,8 +203,6 @@ const AI_TOOLS: CompletionCreateParams.Tool[] = [
   },
 ];
 
-// ─── System Prompt ────────────────────────────────────────────────────────────
-
 function buildSystemPrompt(): string {
   return `You are an AI assistant for Vertex CRM, helping BrewCo (a premium Indian coffee chain) reach their customers effectively.
 
@@ -249,8 +244,6 @@ Available operators: gt, lt, gte, lte, eq, neq, in
 Current date: ${new Date().toISOString().split('T')[0]}`;
 }
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string | null;
@@ -267,11 +260,6 @@ export interface ToolCallResult {
   summary?: string;
 }
 
-// ─── Main Agent Chat ──────────────────────────────────────────────────────────
-
-/**
- * Multi-turn agent chat with function calling.
- */
 export async function chatWithAgent(
   messages: ChatMessage[],
   toolExecutor: (toolName: string, args: Record<string, unknown>) => Promise<unknown>
@@ -374,8 +362,6 @@ export async function chatWithAgent(
   };
 }
 
-// ─── NL to Segment Rules ──────────────────────────────────────────────────────
-
 export async function parseSegmentFromNL(description: string): Promise<{ rules: SegmentRules; name: string }> {
   const prompt = `Convert the following customer segment description into a valid SegmentRules JSON object.
 
@@ -418,8 +404,6 @@ Return ONLY valid JSON, no explanation, no markdown fences.`;
   }
 }
 
-// ─── Campaign Message Draft ───────────────────────────────────────────────────
-
 export async function draftCampaignMessage(
   segmentDescription: string,
   channel: 'whatsapp' | 'sms' | 'email' | 'rcs'
@@ -450,8 +434,6 @@ Write ONLY the message template text. No explanations, no labels, just the messa
 
   return (response.choices[0].message.content ?? '').trim();
 }
-
-// ─── Campaign Analysis ────────────────────────────────────────────────────────
 
 export async function analyzeCampaign(
   stats: CampaignStats,
@@ -490,8 +472,6 @@ Be specific to the coffee chain context. Keep total response under 200 words.`;
 
   return (response.choices[0].message.content ?? '').trim();
 }
-
-// ─── Segment Suggestions ──────────────────────────────────────────────────────
 
 export async function suggestSegments(customerStats: {
   totalCustomers: number;
@@ -548,8 +528,6 @@ Return ONLY the JSON. No markdown. No explanation.`;
     return { insight: 'Focus on re-engaging customers who haven\'t ordered recently for maximum impact.', segments: [] };
   }
 }
-
-// ─── Generate Chat Title ──────────────────────────────────────────────────────
 
 export async function generateChatTitle(firstMessage: string): Promise<string> {
   const prompt = `Generate a very short, clean, emoji-free title (3 to 5 words maximum) that summarizes this user request for a CRM AI assistant:

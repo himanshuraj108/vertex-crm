@@ -8,10 +8,10 @@ async function main() {
     connectionString: directUrl,
     ssl: { rejectUnauthorized: false }
   });
-  
+
   await client.connect();
   console.log('Connected! Creating evaluate_segment function...');
-  
+
   const sql = `
 CREATE OR REPLACE FUNCTION evaluate_segment(rules_json jsonb)
 RETURNS SETOF customers AS $$
@@ -84,9 +84,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
   `;
-  
+
   await client.query(sql);
-  console.log('✅ evaluate_segment function created successfully!');
+  console.log(' evaluate_segment function created successfully!');
   await client.end();
 }
 

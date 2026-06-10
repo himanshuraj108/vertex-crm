@@ -6,8 +6,6 @@ import { sseService } from '../services/sseService';
 import { ApiError } from '../utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
 
-// ─── Validation Schemas ───────────────────────────────────────────────────────
-
 const CreateCampaignSchema = z.object({
   name: z.string().min(1).max(200),
   segment_id: z.string().uuid().nullable().optional().or(z.literal('')),
@@ -16,8 +14,6 @@ const CreateCampaignSchema = z.object({
   message_template: z.string().min(1).max(4000).optional(),
   messageTemplate: z.string().min(1).max(4000).optional(),
 });
-
-// ─── Controllers ──────────────────────────────────────────────────────────────
 
 export const getCampaigns = asyncHandler(async (req: Request, res: Response) => {
   const status = (req.query.status as string) || undefined;
@@ -33,12 +29,12 @@ export const getCampaign = asyncHandler(async (req: Request, res: Response) => {
 
 export const createCampaign = asyncHandler(async (req: Request, res: Response) => {
   const data = CreateCampaignSchema.parse(req.body);
-  
+
   let segmentId = data.segment_id ?? data.segmentId ?? undefined;
   if (segmentId === '') {
     segmentId = undefined;
   }
-  
+
   const messageTemplate = data.message_template ?? data.messageTemplate;
   if (!messageTemplate) {
     throw ApiError.badRequest('message_template or messageTemplate is required');
@@ -59,14 +55,12 @@ export const launchCampaign = asyncHandler(async (req: Request, res: Response) =
   const campaign = await campaignRepo.findById(id);
   if (!campaign) throw ApiError.notFound(`Campaign ${id} not found`);
 
-  // Launch asynchronously — respond immediately so client can connect SSE
   res.json({
     success: true,
     message: 'Campaign launch initiated',
     data: { campaign_id: id },
   });
 
-  // Fire-and-forget launch (errors logged internally)
   campaignService.launch(id).catch((err: Error) => {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`Campaign ${id} launch failed:`, message);
@@ -104,26 +98,19 @@ export const getCampaignCommunications = asyncHandler(async (req: Request, res: 
   });
 });
 
-/**
- * SSE endpoint — streams real-time campaign stats updates.
- * Clients connect and receive updates whenever a delivery receipt comes in.
- */
 export const streamCampaignStats = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
 
   const campaign = await campaignRepo.findById(id);
   if (!campaign) throw ApiError.notFound(`Campaign ${id} not found`);
 
-  // Register the SSE client
   sseService.addClient(id, res);
 
-  // Send current stats immediately on connect
   const stats = await campaignRepo.findStats(id);
   if (stats) {
     res.write(`event: stats_update\ndata: ${JSON.stringify(stats)}\n\n`);
   }
 
-  // Clean up on client disconnect
   req.on('close', () => {
     sseService.removeClient(id, res);
   });

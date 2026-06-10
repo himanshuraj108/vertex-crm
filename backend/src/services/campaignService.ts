@@ -25,7 +25,6 @@ export const campaignService = {
     const segment = await segmentRepo.findById(campaign.segment_id);
     if (!segment) throw new Error(`Segment ${campaign.segment_id} not found`);
 
-    // Get matching customers
     const customers = await customerRepo.findForSegment(segment.rules);
     if (customers.length === 0) {
       logger.warn(`Campaign ${campaignId}: no customers matched segment`);
@@ -35,7 +34,6 @@ export const campaignService = {
 
     logger.info(`Campaign ${campaignId}: launching to ${customers.length} customers`);
 
-    // Create communication records in bulk
     const commsData = customers.map((c) => ({
       campaign_id: campaignId,
       customer_id: c.id,
@@ -45,13 +43,11 @@ export const campaignService = {
 
     const comms = await communicationRepo.bulkCreate(commsData);
 
-    // Init stats and mark as running
     await campaignRepo.initStats(campaignId, customers.length);
     await campaignRepo.updateStatus(campaignId, 'running');
 
     const channelServiceUrl = process.env.CHANNEL_SERVICE_URL ?? 'http://localhost:3003';
 
-    // Send each message via channel service (fire-and-forget per message)
     const sendPromises = comms.map(async (comm) => {
       const customer = customers.find((c) => c.id === comm.customer_id);
       try {
@@ -72,7 +68,6 @@ export const campaignService = {
       }
     });
 
-    // Process in batches of 50 to avoid overwhelming the channel service
     const batchSize = 50;
     for (let i = 0; i < sendPromises.length; i += batchSize) {
       await Promise.allSettled(sendPromises.slice(i, i + batchSize));

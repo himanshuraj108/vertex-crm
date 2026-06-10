@@ -79,7 +79,7 @@ export const campaignRepo = {
     campaignId: string,
     field: 'sent' | 'delivered' | 'failed' | 'opened' | 'read_count' | 'clicked' | 'orders_attributed'
   ): Promise<void> {
-    // Fetch current, increment, update
+
     const current = await this.findStats(campaignId);
     if (!current) return;
     const { error } = await supabase

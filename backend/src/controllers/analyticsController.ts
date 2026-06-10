@@ -52,19 +52,16 @@ export const getDashboardStats = asyncHandler(async (_req: Request, res: Respons
       .gte('sent_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()),
   ]);
 
-  // Revenue sum
   const totalRevenue = (revenueRes.data ?? []).reduce(
     (sum: number, o: { amount: number }) => sum + Number(o.amount),
     0
   );
 
-  // Delivery rate
   const allStats = statsRes.data ?? [];
   const totalSent = allStats.reduce((s: number, r: Record<string, number>) => s + (r.total || 0), 0);
   const totalDelivered = allStats.reduce((s: number, r: Record<string, number>) => s + (r.delivered || 0), 0);
   const avgDeliveryRate = totalSent > 0 ? totalDelivered / totalSent : 0;
 
-  // Customer growth (30d vs previous 30d)
   const now = Date.now();
   const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
   const sixtyDaysAgo = now - 60 * 24 * 60 * 60 * 1000;
@@ -76,7 +73,6 @@ export const getDashboardStats = asyncHandler(async (_req: Request, res: Respons
   }).length;
   const growthRate = prev30 === 0 ? 100 : Math.round(((last30 - prev30) / prev30) * 100);
 
-  // City distribution
   const cityMap: Record<string, number> = {};
   (cityRes.data ?? []).forEach((r: { city: string }) => {
     cityMap[r.city] = (cityMap[r.city] ?? 0) + 1;
@@ -85,17 +81,14 @@ export const getDashboardStats = asyncHandler(async (_req: Request, res: Respons
     .map(([city, count]) => ({ city, count }))
     .sort((a, b) => b.count - a.count);
 
-  // Recent campaigns
   const recentCampaigns = (recentCampaignsRes.data ?? []).map((c: Record<string, unknown>) => ({
     ...c,
     segment_name: (c.segments as { name: string } | null)?.name ?? null,
     stats: c.campaign_stats,
   }));
 
-  // Group communications by date (last 14 days)
   const chartDataMap: Record<string, { day: string; sent: number; delivered: number; opened: number; clicked: number }> = {};
-  
-  // Initialize last 14 days
+
   for (let i = 13; i >= 0; i--) {
     const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
     const dateStr = d.toISOString().split('T')[0];

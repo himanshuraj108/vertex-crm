@@ -8,9 +8,8 @@ const supabase = createClient(
 );
 
 async function main() {
-  console.log('🚀 Creating Summer Cold Brew Launch demo campaign...');
+  console.log(' Creating Summer Cold Brew Launch demo campaign...');
 
-  // 1. Get a segment ID (e.g. High Spenders)
   const { data: segment } = await supabase
     .from('segments')
     .select('id')
@@ -22,14 +21,13 @@ async function main() {
     process.exit(1);
   }
 
-  // 2. Create the campaign
   const campaignData = {
     name: 'Summer Cold Brew Launch',
     segment_id: segment.id,
     channel: 'whatsapp',
-    message_template: 'Hey {{name}}! ☀️ Beat the heat with our new Summer Cold Brew. Enjoy 15% off at any BrewCo outlet today!',
+    message_template: 'Hey {{name}}! ️ Beat the heat with our new Summer Cold Brew. Enjoy 15% off at any BrewCo outlet today!',
     status: 'completed',
-    launched_at: new Date().toISOString(), // Today!
+    launched_at: new Date().toISOString(),
   };
 
   const { data: campaign, error: campErr } = await supabase
@@ -45,7 +43,6 @@ async function main() {
 
   console.log(`Campaign created successfully with ID: ${campaign.id}`);
 
-  // 3. Create campaign stats
   const totalAudience = 65;
   const stats = {
     campaign_id: campaign.id,
@@ -71,7 +68,6 @@ async function main() {
 
   console.log('Campaign stats created successfully.');
 
-  // 4. Create communication logs for 65 random customers
   const { data: customers } = await supabase
     .from('customers')
     .select('id, name')
@@ -99,7 +95,7 @@ async function main() {
       status = 'opened';
     }
 
-    const sentAt = new Date(launchTime.getTime() - i * 30000); // spread over last 30 minutes
+    const sentAt = new Date(launchTime.getTime() - i * 30000);
     const deliveredAt = status !== 'failed' ? new Date(sentAt.getTime() + 1000) : null;
     const openedAt = ['opened', 'read', 'clicked'].includes(status) ? new Date(deliveredAt!.getTime() + 5000) : null;
     const readAt = ['read', 'clicked'].includes(status) ? new Date(openedAt!.getTime() + 2000) : null;
@@ -119,7 +115,6 @@ async function main() {
     });
   }
 
-  // Bulk insert communications
   const { error: commsErr } = await supabase
     .from('communications')
     .insert(communications);
@@ -129,7 +124,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`✅ Demo campaign successfully created with ${communications.length} log entries!`);
+  console.log(` Demo campaign successfully created with ${communications.length} log entries!`);
   process.exit(0);
 }
 

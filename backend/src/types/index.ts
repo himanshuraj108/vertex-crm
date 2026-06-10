@@ -66,7 +66,7 @@ export interface Campaign {
   status: 'draft' | 'running' | 'completed' | 'failed';
   launched_at: Date | null;
   created_at: Date;
-  // Joined fields (from Supabase select with relations)
+
   segment_name?: string | null;
   stats?: CampaignStats | null;
 }

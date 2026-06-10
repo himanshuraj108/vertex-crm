@@ -6,8 +6,6 @@ import { ApiError } from '../utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
 import { SegmentRules } from '../types';
 
-// ─── Validation Schemas ───────────────────────────────────────────────────────
-
 const ConditionSchema = z.object({
   field: z.enum([
     'total_spend',
@@ -43,8 +41,6 @@ const PreviewSegmentSchema = z.object({
   rules: SegmentRulesSchema,
 });
 
-// ─── Controllers ──────────────────────────────────────────────────────────────
-
 export const getSegments = asyncHandler(async (_req: Request, res: Response) => {
   const segments = await segmentRepo.findAll();
   res.json({ success: true, data: segments });
@@ -59,7 +55,6 @@ export const getSegment = asyncHandler(async (req: Request, res: Response) => {
 export const createSegment = asyncHandler(async (req: Request, res: Response) => {
   const data = CreateSegmentSchema.parse(req.body);
 
-  // Evaluate audience size before saving
   const audienceSize = await segmentEngine.count(data.rules as SegmentRules);
 
   const segment = await segmentRepo.create({

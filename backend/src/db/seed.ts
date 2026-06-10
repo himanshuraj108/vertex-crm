@@ -29,9 +29,9 @@ function pick<T>(arr: T[]): T { return arr[rand(0, arr.length - 1)]; }
 function daysAgo(n: number) { return new Date(Date.now() - n * 86400000).toISOString(); }
 
 async function seed() {
-  console.log('🌱 Seeding Vertex CRM database via Supabase...\n');
+  console.log(' Seeding Vertex CRM database via Supabase...\n');
 
-  console.log('🧹 Clearing existing database tables...');
+  console.log(' Clearing existing database tables...');
   try {
     await supabase.from('communications').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('campaign_stats').delete().neq('campaign_id', '00000000-0000-0000-0000-000000000000');
@@ -39,13 +39,12 @@ async function seed() {
     await supabase.from('segments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('customers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    console.log('  ✅ Database cleared');
+    console.log('   Database cleared');
   } catch (err: any) {
-    console.warn('  ⚠️ Database clearing warning:', err.message);
+    console.warn('  ️ Database clearing warning:', err.message);
   }
 
-  // ─── Customers ──────────────────────────────────────────────────────────────
-  console.log('👥 Creating 100 customers...');
+  console.log(' Creating 100 customers...');
   const customers = Array.from({ length: 100 }, (_, i) => {
     const first = pick(FIRST_NAMES);
     const last = pick(LAST_NAMES);
@@ -72,10 +71,9 @@ async function seed() {
     .insert(customers)
     .select('id,name,total_spend,order_count');
   if (custErr) { console.error('Customer seed failed:', custErr.message); process.exit(1); }
-  console.log(`  ✅ ${insertedCustomers?.length} customers created`);
+  console.log(`   ${insertedCustomers?.length} customers created`);
 
-  // ─── Orders ────────────────────────────────────────────────────────────────
-  console.log('📦 Creating ~500 orders...');
+  console.log(' Creating ~500 orders...');
   const orders = [];
   for (const cust of (insertedCustomers ?? [])) {
     const numOrders = rand(1, 8);
@@ -100,12 +98,11 @@ async function seed() {
   const batchSize = 100;
   for (let i = 0; i < orders.length; i += batchSize) {
     const { error } = await supabase.from('orders').insert(orders.slice(i, i + batchSize));
-    if (error) console.warn('  ⚠️ Order batch error:', error.message);
+    if (error) console.warn('  ️ Order batch error:', error.message);
   }
-  console.log(`  ✅ ~${orders.length} orders created`);
+  console.log(`   ~${orders.length} orders created`);
 
-  // ─── Segments ──────────────────────────────────────────────────────────────
-  console.log('🎯 Creating 8 segments...');
+  console.log(' Creating 8 segments...');
   const segments = [
     { name: 'High Spenders', description: 'Customers who spent over ₹10,000', rules: { logic: 'AND', conditions: [{ field: 'total_spend', operator: 'gt', value: 10000 }] }, audience_size: 0, ai_generated: false },
     { name: 'Churning Customers', description: 'No order in 60+ days', rules: { logic: 'AND', conditions: [{ field: 'days_since_last_order', operator: 'gt', value: 60 }] }, audience_size: 0, ai_generated: false },
@@ -117,7 +114,6 @@ async function seed() {
     { name: 'First-Time Buyers', description: 'Exactly 1 order', rules: { logic: 'AND', conditions: [{ field: 'order_count', operator: 'eq', value: 1 }] }, audience_size: 0, ai_generated: false },
   ];
 
-  // Estimate audience sizes from inserted customers
   for (const seg of segments) {
     const { count } = await supabase.from('customers').select('*', { count: 'exact', head: true })
       .gte('total_spend', (seg.rules as { conditions: Array<{ field: string; operator: string; value: number }> }).conditions.find(c => c.field === 'total_spend')?.value ?? 0);
@@ -126,25 +122,23 @@ async function seed() {
 
   const { data: insertedSegs, error: segErr } = await supabase.from('segments').insert(segments).select('id,name');
   if (segErr) { console.error('Segment seed failed:', segErr.message); process.exit(1); }
-  console.log(`  ✅ ${insertedSegs?.length} segments created`);
+  console.log(`   ${insertedSegs?.length} segments created`);
 
-  // ─── Campaigns ─────────────────────────────────────────────────────────────
-  console.log('📢 Creating 5 campaigns...');
+  console.log(' Creating 5 campaigns...');
   const segIds = insertedSegs?.map(s => s.id) ?? [];
   const campaigns = [
-    { name: 'Monsoon Re-engagement', segment_id: segIds[1], channel: 'whatsapp', message_template: 'Hi {{name}}, we miss you at BrewCo! Come back for a warm cup this monsoon. ☕', status: 'completed', launched_at: daysAgo(15) },
+    { name: 'Monsoon Re-engagement', segment_id: segIds[1], channel: 'whatsapp', message_template: 'Hi {{name}}, we miss you at BrewCo! Come back for a warm cup this monsoon. ', status: 'completed', launched_at: daysAgo(15) },
     { name: 'VIP Exclusive Offer', segment_id: segIds[0], channel: 'email', message_template: 'Dear {{name}}, as one of our most valued guests in {{city}}, enjoy 20% off your next order.', status: 'completed', launched_at: daysAgo(8) },
     { name: 'New Member Welcome', segment_id: segIds[2], channel: 'sms', message_template: 'Welcome to BrewCo {{name}}! Use FIRST20 for 20% off your next order.', status: 'completed', launched_at: daysAgo(5) },
-    { name: 'Mumbai Weekend Special', segment_id: segIds[3], channel: 'rcs', message_template: 'Hey {{name}}! 🎉 This weekend, enjoy Buy 1 Get 1 at all Mumbai BrewCo outlets!', status: 'running', launched_at: daysAgo(1) },
+    { name: 'Mumbai Weekend Special', segment_id: segIds[3], channel: 'rcs', message_template: 'Hey {{name}}!  This weekend, enjoy Buy 1 Get 1 at all Mumbai BrewCo outlets!', status: 'running', launched_at: daysAgo(1) },
     { name: 'Loyalty Rewards', segment_id: segIds[6], channel: 'whatsapp', message_template: 'Hi {{name}}, you\'ve spent ₹{{total_spend}} with us! Claim your loyalty reward today.', status: 'draft', launched_at: null },
   ];
 
   const { data: insertedCamps, error: campErr } = await supabase.from('campaigns').insert(campaigns).select('id,name');
   if (campErr) { console.error('Campaign seed failed:', campErr.message); process.exit(1); }
-  console.log(`  ✅ ${insertedCamps?.length} campaigns created`);
+  console.log(`   ${insertedCamps?.length} campaigns created`);
 
-  // ─── Campaign Stats ─────────────────────────────────────────────────────────
-  console.log('📊 Creating campaign stats...');
+  console.log(' Creating campaign stats...');
   const statsData = (insertedCamps ?? []).slice(0, 4).map((camp, i) => {
     const total = rand(20, 60);
     const sent = i < 3 ? total : rand(10, total);
@@ -165,11 +159,10 @@ async function seed() {
   const { error: statsErr } = await supabase.from('campaign_stats').insert(statsData);
   if (statsErr) console.warn('Stats seed warning:', statsErr.message);
 
-  // ─── Communications ────────────────────────────────────────────────────────
-  console.log('✉️ Creating communication logs...');
+  console.log('️ Creating communication logs...');
   const communications = [];
   const activeCampaigns = insertedCamps?.slice(0, 4) || [];
-  
+
   for (let i = 0; i < activeCampaigns.length; i++) {
     const camp = activeCampaigns[i];
     const campStat = statsData[i];
@@ -183,7 +176,7 @@ async function seed() {
     for (let cIdx = 0; cIdx < selectedCustomers.length; cIdx++) {
       const cust = selectedCustomers[cIdx];
       let status: 'failed' | 'delivered' | 'opened' | 'read' | 'clicked' = 'delivered';
-      
+
       if (cIdx < campStat.failed) {
         status = 'failed';
       } else if (cIdx < campStat.failed + campStat.clicked) {
@@ -217,11 +210,11 @@ async function seed() {
 
   for (let i = 0; i < communications.length; i += batchSize) {
     const { error } = await supabase.from('communications').insert(communications.slice(i, i + batchSize));
-    if (error) console.warn('  ⚠️ Communications batch error:', error.message);
+    if (error) console.warn('  ️ Communications batch error:', error.message);
   }
-  console.log(`  ✅ ${communications.length} communication logs created`);
+  console.log(`   ${communications.length} communication logs created`);
 
-  console.log('\n✅ Database seeded successfully!');
+  console.log('\n Database seeded successfully!');
   console.log(`   Customers : 100`);
   console.log(`   Orders    : ~${orders.length}`);
   console.log(`   Segments  : 8`);
@@ -230,6 +223,6 @@ async function seed() {
 }
 
 seed().catch((err) => {
-  console.error('\n❌ Seed failed:', err);
+  console.error('\n Seed failed:', err);
   process.exit(1);
 });

@@ -4,8 +4,6 @@ import { customerRepo } from '../repositories/customerRepo';
 import { ApiError } from '../utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
 
-// ─── Validation Schemas ───────────────────────────────────────────────────────
-
 const CreateCustomerSchema = z.object({
   name: z.string().min(1).max(100),
   email: z.string().email(),
@@ -33,8 +31,6 @@ const ImportCustomersSchema = z.object({
     .min(1)
     .max(5000),
 });
-
-// ─── Controllers ──────────────────────────────────────────────────────────────
 
 export const getCustomers = asyncHandler(async (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);

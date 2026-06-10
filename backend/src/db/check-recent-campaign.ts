@@ -7,7 +7,7 @@ async function main() {
   const supabase = createClient(url, key);
 
   console.log('Fetching most recent campaign...');
-  
+
   const { data: campaigns, error: campErr } = await supabase
     .from('campaigns')
     .select('id, name, status, launched_at, created_at')

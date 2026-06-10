@@ -1,14 +1,10 @@
 import rateLimit from 'express-rate-limit';
 
-/**
- * Global rate limiter: 100 requests per 15 minutes per IP.
- * Returns a JSON error when the limit is exceeded.
- */
 export const rateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 100,
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false,   // Disable the `X-RateLimit-*` headers
+  standardHeaders: true,
+  legacyHeaders: false,
   skip: (req) => req.path.startsWith('/api/v1/receipts') || req.path === '/health',
   message: {
     success: false,

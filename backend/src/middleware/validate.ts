@@ -1,11 +1,6 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { ZodSchema, ZodError } from 'zod';
 
-/**
- * Zod validation middleware factory.
- * Validates req.body against the provided schema.
- * On failure returns 400 with a list of field-level errors.
- */
 export function validate(schema: ZodSchema): RequestHandler {
   return (req: Request, res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.body);
@@ -27,7 +22,6 @@ export function validate(schema: ZodSchema): RequestHandler {
       return;
     }
 
-    // Replace body with parsed (and coerced) values
     req.body = result.data;
     next();
   };

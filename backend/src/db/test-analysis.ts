@@ -9,19 +9,19 @@ async function main() {
     console.error('No campaigns found in database');
     return;
   }
-  
+
   const campaign = campaigns[0];
   console.log('Selected Campaign ID:', campaign.id);
   console.log('Selected Campaign Name:', campaign.name);
-  
+
   const stats = await campaignRepo.findStats(campaign.id);
   console.log('Stats:', stats);
-  
+
   if (!stats) {
     console.error('No stats found for campaign');
     return;
   }
-  
+
   try {
     console.log('Calling analyzeCampaign with Groq...');
     const result = await analyzeCampaign(

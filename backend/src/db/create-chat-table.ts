@@ -8,10 +8,10 @@ async function main() {
     connectionString: directUrl,
     ssl: { rejectUnauthorized: false }
   });
-  
+
   await client.connect();
   console.log('Connected! Creating chat_sessions table...');
-  
+
   const sql = `
 CREATE TABLE IF NOT EXISTS chat_sessions (
   id         UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -21,9 +21,9 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
   `;
-  
+
   await client.query(sql);
-  console.log('✅ chat_sessions table created successfully!');
+  console.log(' chat_sessions table created successfully!');
   await client.end();
 }
 

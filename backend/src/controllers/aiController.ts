@@ -20,8 +20,6 @@ import { campaignService } from '../services/campaignService';
 import { supabase } from '../db/supabase';
 import { SegmentRules } from '../types';
 
-// ─── Validation Schemas ───────────────────────────────────────────────────────
-
 const ChatSchema = z.object({
   messages: z
     .array(
@@ -50,12 +48,6 @@ const AnalyzeCampaignSchema = z.object({
   campaignId: z.string().uuid(),
 });
 
-// ─── Tool Executor ────────────────────────────────────────────────────────────
-
-/**
- * Executes AI agent tool calls against real database/services.
- * This is the bridge between Groq function calls and the actual backend.
- */
 async function executeToolCall(
   toolName: string,
   args: Record<string, unknown>
@@ -164,7 +156,7 @@ async function executeToolCall(
 
     case 'launch_campaign': {
       const { campaign_id } = args as { campaign_id: string };
-      // Fire-and-forget
+
       campaignService.launch(campaign_id).catch((err: Error) => {
         console.error(`AI-initiated campaign launch failed: ${err.message}`);
       });
@@ -229,8 +221,6 @@ async function executeToolCall(
   }
 }
 
-// ─── Controllers ──────────────────────────────────────────────────────────────
-
 export const chat = asyncHandler(async (req: Request, res: Response) => {
   const { messages, conversationId } = ChatSchema.parse(req.body);
 
@@ -245,7 +235,6 @@ export const chat = asyncHandler(async (req: Request, res: Response) => {
     result: tc.result,
   }));
 
-  // If session tracking is active, save to DB/memory
   if (conversationId) {
     const session = await chatSessionRepo.findById(conversationId);
     if (session) {
@@ -263,7 +252,6 @@ export const chat = asyncHandler(async (req: Request, res: Response) => {
         assistantMsg
       ];
 
-      // Auto-generate title if session has no title or has 0 messages
       let updatedTitle = session.title;
       if (session.title === 'New Conversation' || !session.title || session.messages.length === 0) {
         updatedTitle = await generateChatTitle(lastUserMsg.content || '');
@@ -290,7 +278,6 @@ export const parseSegment = asyncHandler(async (req: Request, res: Response) => 
 
   const parsed = await parseSegmentFromNL(description);
 
-  // Evaluate the audience size for the generated rules
   const count = await segmentEngine.count(parsed.rules);
 
   res.json({
@@ -371,7 +358,6 @@ export const suggestSegmentsHandler = asyncHandler(async (_req: Request, res: Re
 
   const suggestions = await suggestSegments(stats);
 
-  // Enrich segment suggestions with audience sizes
   const enriched = await Promise.all(
     suggestions.segments.map(async (s) => {
       let audienceSize = 0;
@@ -389,8 +375,6 @@ export const suggestSegmentsHandler = asyncHandler(async (_req: Request, res: Re
     data: { insight: suggestions.insight, segments: enriched },
   });
 });
-
-// ─── Chat Sessions CRUD ───────────────────────────────────────────────────────
 
 export const getSessions = asyncHandler(async (_req: Request, res: Response) => {
   const sessions = await chatSessionRepo.findAll();

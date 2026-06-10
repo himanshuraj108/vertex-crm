@@ -39,10 +39,10 @@ export async function testConnection(): Promise<void> {
   try {
     const result = await pool.query('SELECT NOW() AS now');
     logger.info(
-      `✅ PostgreSQL connected — server time: ${result.rows[0].now}`
+      ` PostgreSQL connected — server time: ${result.rows[0].now}`
     );
   } catch (err) {
-    logger.error('❌ Failed to connect to PostgreSQL', err);
+    logger.error(' Failed to connect to PostgreSQL', err);
     throw err;
   }
 }

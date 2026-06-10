@@ -9,12 +9,11 @@ export interface ChatSession {
   updated_at: string;
 }
 
-// In-memory fallback database
 const inMemorySessions = new Map<string, ChatSession>();
 
 function isTableMissingError(err: any): boolean {
   return err && (
-    err.code === 'PGRST116' || 
+    err.code === 'PGRST116' ||
     err.code === 'PGRST205' ||
     err.code === '42P01' ||
     err.message?.includes('relation "chat_sessions" does not exist') ||

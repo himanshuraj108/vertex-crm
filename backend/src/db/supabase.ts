@@ -8,26 +8,17 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY are required');
 }
 
-// Main Supabase client — connects over HTTPS (port 443), no pg port needed
 export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false },
   db: { schema: 'public' },
 });
 
-/**
- * Run raw SQL via Supabase RPC.
- * Requires an exec_sql function to be created in the database.
- * Falls back gracefully if not available.
- */
 export async function rpc<T = unknown>(fn: string, params?: Record<string, unknown>): Promise<T[]> {
   const { data, error } = await supabase.rpc(fn, params ?? {});
   if (error) throw new Error(`RPC ${fn} failed: ${error.message}`);
   return data as T[];
 }
 
-/**
- * Generic select helper with type safety
- */
 export async function selectFrom<T = Record<string, unknown>>(
   table: string,
   options?: {
@@ -53,16 +44,16 @@ export async function testConnection(): Promise<void> {
   try {
     const { error } = await supabase.from('customers').select('id').limit(1);
     if (error && error.code !== 'PGRST116') {
-      // PGRST116 = table doesn't exist yet — that's ok, means connection works
+
       if (error.message.includes('relation') && error.message.includes('does not exist')) {
-        logger.info('✅ Supabase connected (schema not yet applied)');
+        logger.info(' Supabase connected (schema not yet applied)');
         return;
       }
       throw new Error(error.message);
     }
-    logger.info('✅ Supabase connected via HTTPS');
+    logger.info(' Supabase connected via HTTPS');
   } catch (err) {
-    logger.error('❌ Supabase connection failed', err);
+    logger.error(' Supabase connection failed', err);
     throw err;
   }
 }

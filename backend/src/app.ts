@@ -17,12 +17,11 @@ import aiRoutes from './routes/v1/ai';
 export function createApp(): Application {
   const app = express();
 
-  // ─── Security & Parsing ─────────────────────────────────────────────────────
   app.use(helmet());
   app.use(
     cors({
       origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        // Allow any localhost origin (frontend may be on any port)
+
         if (!origin || origin.startsWith('http://localhost') || origin === process.env.FRONTEND_URL) {
           callback(null, true);
         } else {
@@ -37,13 +36,10 @@ export function createApp(): Application {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
 
-  // ─── Rate Limiting ──────────────────────────────────────────────────────────
   app.use(rateLimiter);
 
-  // ─── Request Logging ────────────────────────────────────────────────────────
   app.use(requestLogger);
 
-  // ─── Health Check ───────────────────────────────────────────────────────────
   app.get('/health', (_req: Request, res: Response) => {
     res.json({
       status: 'ok',
@@ -56,7 +52,6 @@ export function createApp(): Application {
     });
   });
 
-  // ─── API v1 Routes ──────────────────────────────────────────────────────────
   app.use('/api/v1/customers', customerRoutes);
   app.use('/api/v1/segments', segmentRoutes);
   app.use('/api/v1/campaigns', campaignRoutes);
@@ -64,12 +59,10 @@ export function createApp(): Application {
   app.use('/api/v1/analytics', analyticsRoutes);
   app.use('/api/v1/ai', aiRoutes);
 
-  // ─── 404 Handler ────────────────────────────────────────────────────────────
   app.use((_req: Request, _res: Response, next: NextFunction) => {
     next(ApiError.notFound(`Route not found`));
   });
 
-  // ─── Global Error Handler (must be last) ───────────────────────────────────
   app.use(errorHandler);
 
   return app;
