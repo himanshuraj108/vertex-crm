@@ -4,8 +4,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { segmentsApi } from '@/lib/api-client';
 import { formatDate, formatRelativeTime, cn } from '@/lib/utils';
-import { ArrowLeft, Users, Target, Sparkles, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Users, Target, Sparkles, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Link from 'next/link';
 import type { Segment, Customer } from '@/types';
 import { SegmentAnalytics } from '@/components/segments/SegmentAnalytics';
@@ -13,6 +14,8 @@ import { SegmentAnalytics } from '@/components/segments/SegmentAnalytics';
 export default function SegmentDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const router = useRouter();
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
 
   const { data: segment, isLoading, refetch, isRefetching } = useQuery<Segment>({
     queryKey: ['segment', id],
@@ -20,10 +23,13 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
   });
 
   const { data: customersData, refetch: refetchCustomers, isRefetching: isRefetchingCustomers } = useQuery<{ data: Customer[]; total: number }>({
-    queryKey: ['segment-customers', id],
-    queryFn: () => segmentsApi.getCustomers(id, { limit: 20 }) as Promise<{ data: Customer[]; total: number }>,
+    queryKey: ['segment-customers', id, page],
+    queryFn: () => segmentsApi.getCustomers(id, { page, limit: PAGE_SIZE }) as Promise<{ data: Customer[]; total: number }>,
     enabled: !!segment,
   });
+
+  const totalCustomers = customersData?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCustomers / PAGE_SIZE));
 
   const { data: analyticsCustomersData, isLoading: analyticsLoading, refetch: refetchAnalytics, isRefetching: isRefetchingAnalytics } = useQuery<{ data: Customer[] }>({
     queryKey: ['segment-analytics-customers', id],
@@ -164,7 +170,7 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
           <div className="border-b border-zinc-100 dark:border-zinc-800 px-5 py-4 flex items-center justify-between">
             <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Matching Customers</p>
             {customersData && (
-              <p className="text-xs text-zinc-400 dark:text-zinc-500">{customersData.total?.toLocaleString() ?? customersData.data?.length} total</p>
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">{totalCustomers.toLocaleString()} total</p>
             )}
           </div>
           <table className="data-table">
@@ -178,7 +184,7 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
             </thead>
             <tbody>
               {!customersData ? (
-                Array.from({ length: 5 }).map((_, i) => (
+                Array.from({ length: PAGE_SIZE }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
                     <td><div className="h-3 w-28 rounded bg-zinc-100 dark:bg-zinc-800" /></td>
                     <td><div className="h-3 w-16 rounded bg-zinc-100 dark:bg-zinc-800" /></td>
@@ -196,6 +202,32 @@ export default function SegmentDetailPage({ params }: { params: { id: string } }
               ))}
             </tbody>
           </table>
+
+          {/* Pagination */}
+          <div className="border-t border-zinc-100 dark:border-zinc-800 px-5 py-3 flex items-center justify-between">
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">
+              Page {page} of {totalPages}
+              {totalCustomers > 0 && (
+                <span className="ml-1">· Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalCustomers)} of {totalCustomers.toLocaleString()}</span>
+              )}
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="flex items-center gap-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={13} /> Prev
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="flex items-center gap-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next <ChevronRight size={13} />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
