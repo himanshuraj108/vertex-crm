@@ -129,13 +129,16 @@ const AI_TOOLS: CompletionCreateParams.Tool[] = [
     type: 'function',
     function: {
       name: 'create_campaign',
-      description: 'Create a campaign draft targeting a segment',
+      description: 'Create a campaign draft targeting a segment. Use the segment_id from create_segment or list_campaigns results. You may pass either the segment UUID or the exact segment name — both are accepted.',
       parameters: {
         type: 'object',
         required: ['name', 'segment_id', 'channel', 'message_template'],
         properties: {
           name: { type: 'string' },
-          segment_id: { type: 'string', description: 'UUID of the target segment' },
+          segment_id: {
+            type: 'string',
+            description: 'UUID or exact name of the target segment (e.g. "High-Value Customers" or a UUID like "abc-123...")',
+          },
           channel: { type: 'string', enum: ['whatsapp', 'sms', 'email', 'rcs'] },
           message_template: {
             type: 'string',

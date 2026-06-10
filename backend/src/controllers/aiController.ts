@@ -145,9 +145,29 @@ async function executeToolCall(
         channel: 'whatsapp' | 'sms' | 'email' | 'rcs';
         message_template: string;
       };
+
+      const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      let resolvedSegmentId: string | null = null;
+
+      if (UUID_REGEX.test(segment_id)) {
+        resolvedSegmentId = segment_id;
+      } else {
+        const { data: segRows } = await supabase
+          .from('segments')
+          .select('id')
+          .ilike('name', segment_id.trim())
+          .limit(1);
+        if (!segRows || segRows.length === 0) {
+          return {
+            error: `Segment "${segment_id}" not found. Please use list_segments to get the correct segment ID or name.`,
+          };
+        }
+        resolvedSegmentId = (segRows[0] as { id: string }).id;
+      }
+
       const campaign = await campaignRepo.create({
         name,
-        segment_id,
+        segment_id: resolvedSegmentId,
         channel,
         message_template,
       });
