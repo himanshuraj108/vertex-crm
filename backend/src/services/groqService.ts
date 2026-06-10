@@ -11,6 +11,10 @@ const groqFallback = new Groq({
   apiKey: process.env.FALLBACK_GROQ_API_KEY || '',
 });
 
+const groqFallback2 = new Groq({
+  apiKey: process.env.FALLBACK_GROQ_API_KEY_2 || '',
+});
+
 const MODEL = 'llama-3.3-70b-versatile';
 
 const SEGMENT_RULES_SCHEMA = {
@@ -51,28 +55,28 @@ async function createChatCompletion(
   params: Omit<ChatCompletionCreateParams, 'model'> & { model?: string }
 ): Promise<any> {
   const primaryModel = params.model || MODEL;
+  // Try primary key
   try {
-    return await groq.chat.completions.create({
-      ...params,
-      model: primaryModel,
-    } as ChatCompletionCreateParams);
+    return await groq.chat.completions.create({ ...params, model: primaryModel } as ChatCompletionCreateParams);
   } catch (err: any) {
-    logger.warn(`Primary Groq client failed: ${err.message || err}. Retrying with fallback API key...`);
-    try {
-      return await groqFallback.chat.completions.create({
-        ...params,
-        model: primaryModel,
-      } as ChatCompletionCreateParams);
-    } catch (fallbackErr: any) {
-      if (fallbackErr.status === 429 && primaryModel === 'llama-3.3-70b-versatile') {
-        logger.warn('Fallback Groq also rate limited. Falling back to llama-3.1-8b-instant on fallback client...');
-        return await groqFallback.chat.completions.create({
-          ...params,
-          model: 'llama-3.1-8b-instant',
-        } as ChatCompletionCreateParams);
-      }
-      throw fallbackErr;
-    }
+    logger.warn(`Primary Groq key failed: ${err.message || err}. Trying fallback 1...`);
+  }
+  // Try fallback key 1
+  try {
+    return await groqFallback.chat.completions.create({ ...params, model: primaryModel } as ChatCompletionCreateParams);
+  } catch (err: any) {
+    logger.warn(`Fallback 1 Groq key failed: ${err.message || err}. Trying fallback 2...`);
+  }
+  // Try fallback key 2
+  try {
+    return await groqFallback2.chat.completions.create({ ...params, model: primaryModel } as ChatCompletionCreateParams);
+  } catch (err: any) {
+    logger.warn(`Fallback 2 Groq key failed: ${err.message || err}. Trying smaller model on fallback 2...`);
+    // Last resort: smaller model on fallback 2
+    return await groqFallback2.chat.completions.create({
+      ...params,
+      model: 'llama-3.1-8b-instant',
+    } as ChatCompletionCreateParams);
   }
 }
 
@@ -91,6 +95,20 @@ const AI_TOOLS: CompletionCreateParams.Tool[] = [
           max_spend: { type: 'number', description: 'Maximum total spend in INR' },
           days_since_last_order_gt: { type: 'number', description: 'Customers inactive for more than N days' },
           order_count_gte: { type: 'number', description: 'Customers with at least N orders' },
+          sort_field: {
+            type: 'string',
+            enum: ['total_spend', 'order_count', 'visit_count', 'last_order_at'],
+            description: 'Field to sort results by (e.g. total_spend for highest spenders)'
+          },
+          sort_order: {
+            type: 'string',
+            enum: ['ASC', 'DESC'],
+            description: 'Sort direction — DESC for highest first, ASC for lowest first'
+          },
+          limit: {
+            type: 'number',
+            description: 'Maximum number of customers to return (default 10, max 100)'
+          },
         },
       },
     },
@@ -134,7 +152,10 @@ const AI_TOOLS: CompletionCreateParams.Tool[] = [
         type: 'object',
         required: ['name', 'segment_id', 'channel', 'message_template'],
         properties: {
-          name: { type: 'string' },
+          name: {
+            type: 'string',
+            description: 'A short, catchy, human-readable campaign name — e.g. "Diwali Re-engagement Campaign", "Mumbai Weekend WhatsApp Blast", "Win-Back Inactive Customers". NEVER use IDs, slugs, hyphens, or technical strings as the name.',
+          },
           segment_id: {
             type: 'string',
             description: 'UUID or exact name of the target segment (e.g. "High-Value Customers" or a UUID like "abc-123...")',
@@ -555,11 +576,7 @@ Return ONLY the JSON. No markdown. No explanation.`;
 }
 
 export async function generateChatTitle(firstMessage: string): Promise<string> {
-  const prompt = `Generate a very short, clean, emoji-free title (3 to 5 words maximum) that summarizes this user request for a CRM AI assistant:
-
-Request: "${firstMessage}"
-
-Return ONLY the plain title text, no quotes, no formatting.`;
+  const prompt = `Generate a very short, clean, emoji-free title (3 to 5 words maximum) that summarizes this user request for a CRM AI assistant:\n\nRequest: "${firstMessage}"\n\nReturn ONLY the plain title text, no quotes, no formatting.`;
 
   try {
     const response = await createChatCompletion({
@@ -568,8 +585,180 @@ Return ONLY the plain title text, no quotes, no formatting.`;
       max_tokens: 30,
       temperature: 0.5,
     });
-    return (response.choices[0].message.content ?? 'New Conversation').replace(/^"|"$/g, '').trim();
+    return (response.choices[0].message.content ?? 'New Conversation').replace(/^\"|\"$/g, '').trim();
   } catch {
     return firstMessage.length > 30 ? firstMessage.substring(0, 30) + '...' : firstMessage;
   }
 }
+
+export type StreamEvent =
+  | { type: 'tool_call'; data: ToolCallResult }
+  | { type: 'text_chunk'; content: string }
+  | { type: 'error'; message: string }
+  | { type: 'done' };
+
+export async function* chatWithAgentStream(
+  messages: ChatMessage[],
+  toolExecutor: (toolName: string, args: Record<string, unknown>) => Promise<unknown>
+): AsyncGenerator<StreamEvent> {
+  const conversationMessages: CompletionCreateParams.Message[] = [
+    { role: 'system', content: buildSystemPrompt() },
+    ...messages.map((m): CompletionCreateParams.Message => {
+      if (m.role === 'tool') {
+        return { role: 'tool', tool_call_id: m.tool_call_id ?? '', content: m.content ?? '' };
+      }
+      if (m.role === 'assistant' && m.tool_calls) {
+        return { role: 'assistant', content: m.content ?? '', tool_calls: m.tool_calls };
+      }
+      return { role: m.role as 'user' | 'assistant', content: m.content ?? '' };
+    }),
+  ];
+
+  // Helper: detect & parse raw <function=name>{...}</function> patterns in text
+  const FUNC_REGEX = /<function=(\w+)>([\s\S]*?)<\/function>/g;
+
+  function extractInlineToolCalls(text: string): Array<{ name: string; args: Record<string, unknown> }> {
+    const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
+    let match: RegExpExecArray | null;
+    FUNC_REGEX.lastIndex = 0;
+    while ((match = FUNC_REGEX.exec(text)) !== null) {
+      const name = match[1];
+      let args: Record<string, unknown> = {};
+      try { args = JSON.parse(match[2]); } catch { args = {}; }
+      calls.push({ name, args });
+    }
+    return calls;
+  }
+
+  function stripInlineToolCalls(text: string): string {
+    return text.replace(/<function=\w+>[\s\S]*?<\/function>/g, '').trim();
+  }
+
+  let maxIterations = 10;
+
+  // Phase 1: Run tool calls using non-streaming API (reliable, proven to work)
+  while (maxIterations-- > 0) {
+    const response = await createChatCompletion({
+      model: MODEL,
+      messages: conversationMessages,
+      tools: AI_TOOLS,
+      tool_choice: 'auto' as CompletionCreateParams.ToolChoice,
+      max_tokens: 2048,
+    });
+
+    const assistantMsg = response.choices[0].message;
+    const textContent = assistantMsg.content ?? '';
+
+    conversationMessages.push({
+      role: 'assistant',
+      content: textContent,
+      tool_calls: assistantMsg.tool_calls as CompletionCreateParams.Message.ToolCall[] | undefined,
+    });
+
+    // Check for proper tool_calls first
+    if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
+      for (const toolCall of assistantMsg.tool_calls) {
+        const toolName = toolCall.function?.name ?? '';
+        let args: Record<string, unknown> = {};
+        try { args = JSON.parse(toolCall.function?.arguments ?? '{}') as Record<string, unknown>; } catch { args = {}; }
+
+        let result: unknown;
+        try { result = await toolExecutor(toolName, args); } catch (e: any) { result = { error: e?.message ?? 'Tool failed' }; }
+
+        yield { type: 'tool_call', data: { toolName, toolCallId: toolCall.id ?? '', args, result, summary: `Called ${toolName}` } };
+
+        conversationMessages.push({ role: 'tool', tool_call_id: toolCall.id ?? '', content: JSON.stringify(result) });
+      }
+      continue; // loop again to get next response
+    }
+
+    // Fallback: model emitted raw <function=name>{...}</function> text instead of tool_calls
+    const inlineCalls = extractInlineToolCalls(textContent);
+    if (inlineCalls.length > 0) {
+      logger.warn(`Model emitted ${inlineCalls.length} inline function call(s) as text — intercepting and executing`);
+
+      // Replace the last assistant message with stripped content so it doesn't bleed into text
+      conversationMessages[conversationMessages.length - 1] = {
+        role: 'assistant',
+        content: stripInlineToolCalls(textContent) || '',
+      };
+
+      for (const { name: toolName, args } of inlineCalls) {
+        let result: unknown;
+        try { result = await toolExecutor(toolName, args); } catch (e: any) { result = { error: e?.message ?? 'Tool failed' }; }
+
+        yield { type: 'tool_call', data: { toolName, toolCallId: `inline-${Date.now()}`, args, result, summary: `Called ${toolName}` } };
+
+        conversationMessages.push({ role: 'tool', tool_call_id: `inline-${Date.now()}`, content: JSON.stringify(result) });
+      }
+      continue; // loop to get the real text response now that tools are done
+    }
+
+    // No tool calls of any kind — tool phase is done
+    break;
+  }
+
+  // Phase 2: Generate final text response using the full fallback chain (no tools)
+  // If the conversation ended on a tool result, nudge the model to write a summary
+  try {
+    let phase2Messages = [...conversationMessages];
+    
+    // Pop trailing assistant message if it has no content and no tool calls, to prevent the model from ending on empty completion
+    if (
+      phase2Messages.length > 0 &&
+      phase2Messages[phase2Messages.length - 1].role === 'assistant' &&
+      !phase2Messages[phase2Messages.length - 1].content &&
+      !phase2Messages[phase2Messages.length - 1].tool_calls
+    ) {
+      phase2Messages.pop();
+    }
+
+    const lastUserIdx = phase2Messages.map(m => m.role).lastIndexOf('user');
+    const messagesAfterLastUser = lastUserIdx >= 0 ? phase2Messages.slice(lastUserIdx + 1) : phase2Messages;
+    const hasToolCallThisTurn = messagesAfterLastUser.some(m => m.role === 'tool');
+
+    if (hasToolCallThisTurn) {
+      phase2Messages.push({
+        role: 'user' as const,
+        content: 'Based on the tool results above, provide a detailed response in structured text or markdown, summarizing the findings, insights, numbers, and next steps naturally.',
+      });
+    }
+
+    const timeoutMs = 25000;
+    const timer = setTimeout(() => { /* signal unused — just for safety */ }, timeoutMs);
+
+    let finalText = '';
+    try {
+      const response = await createChatCompletion({
+        model: MODEL,
+        messages: phase2Messages,
+        max_tokens: 1024,
+      });
+      finalText = stripInlineToolCalls(response.choices[0]?.message?.content ?? '');
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (finalText) {
+      // Word-by-word emit to keep the streaming UX feel
+      const words = finalText.split(' ');
+      for (const word of words) {
+        yield { type: 'text_chunk', content: word + ' ' };
+      }
+    }
+  } catch (err: any) {
+    logger.warn(`Phase 2 text generation failed: ${err?.message}`);
+    // Last resort: pull text from last assistant message in history
+    const lastAssistant = [...conversationMessages].reverse().find((m) => m.role === 'assistant');
+    const fallbackText = stripInlineToolCalls((lastAssistant as any)?.content ?? '');
+    if (fallbackText) {
+      const words = String(fallbackText).split(' ');
+      for (const word of words) {
+        yield { type: 'text_chunk', content: word + ' ' };
+      }
+    }
+  }
+
+  yield { type: 'done' };
+}
+
